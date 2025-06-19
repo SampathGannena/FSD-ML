@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Choose Your Role | StudyFinder</title>
+  
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="land.css" />
+  <link rel="stylesheet" href="next.css" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo">
+      <img src="../credentials/image.jpg" alt="StudyFinder Logo" />
+      <h1>StudyFinder</h1>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#choose-role">Home</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#testimonials">Testimonials</a></li>
+      <li><a href="#cta">Contact Us</a></li>
+    </ul>
+    <div class="hamburger">
+      <span></span><span></span><span></span>
+    </div>
+  </nav>
+
+  <!-- Choose Role Section -->
+  <section class="choose-role">
+    <h2>Select Your Role</h2>
+    <div class="role-container">
+      <div class="role-card">
+        <h3>👩‍🏫 Mentor</h3>
+        <p>Guide, evaluate, and connect with learners.</p>
+        <a href="../mentor/signin.html" class="role-btn">Login as Mentor</a>
+      </div>
+      <div class="role-card">
+        <h3>👨‍🎓 Learner</h3>
+        <p>Find your perfect study group and grow together.</p>
+        <a href="../credentials/signin.html" class="role-btn">Login as Learner</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <h2>🚀 Why Choose Us?</h2>
+    <div class="feature-box">
+        <div class="feature">
+            <img src="Ai.webp" alt="AI Icon">
+            <h3>Smart AI Matching</h3>
+            <p>Find the best study partners based on your learning style.</p>
+        </div>
+        <div class="feature">
+            <img src="chat.webp" alt="Chat Icon">
+            <h3>Instant Collaboration</h3>
+            <p>Discuss, share, and learn with seamless real-time chat.</p>
+        </div>
+        <div class="feature">
+            <img src="global.png" alt="Global Icon">
+            <h3>Global Learning</h3>
+            <p>Connect with students worldwide and expand your network.</p>
+        </div>
+    </div>
+  </section>
+
+  <section class="testimonials" id="testimonials">
+    <h2>💬 What Our Users Say</h2>
+    <div class="testimonial-container">
+        <div class="testimonial">
+            <p>“I found an amazing study group for my exams. The AI recommendations were spot on!”</p>
+            <h4>- Aditi, Computer Science</h4>
+        </div>
+        <div class="testimonial">
+            <p>“The real-time chat and collaboration tools make studying so much easier and fun!”</p>
+            <h4>- Rahul, Engineering</h4>
+        </div>
+    </div>
+  </section>
+
+   <!-- Footer -->
+   <footer class="footer" id="cta">
+    <div class="footer-container">
+      <div class="footer-about">
+        <h2>StudyFinder</h2>
+        <p>Empowering students through AI to find the perfect study group based on learning style, subjects, and goals.</p>
+      </div>
+
+      <div class="footer-links">
+        <h3>Quick Links</h3>
+        <ul>
+          <li><a href="#choose-role">Home</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#testimonials">Testimonials</a></li>
+          <li><a href="../Dashboards/profile.html">Profile</a></li>
+          <li><a href="../ml_model/input.html">Find Group</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-contact">
+        <h3>Contact Us</h3>
+        <p><i class="fas fa-envelope"></i> <a href="mailto:youremail@example.com">youremail@example.com</a></p>
+        <p><i class="fas fa-phone"></i> +91 98765 43210</p>
+        <p><i class="fas fa-map-marker-alt"></i> South India</p>
+      </div>
+
+      <div class="footer-newsletter">
+        <h3>Stay in the Loop</h3>
+        <p>Subscribe to receive the latest group study tips & platform updates!</p>
+        <form class="newsletter-form">
+          <input type="email" placeholder="Enter your email" required />
+          <button type="submit">Subscribe</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="social-icons">
+        <a href="https://linkedin.com/in/your-profile" target="_blank"><i class="fab fa-linkedin"></i></a>
+        <a href="https://github.com/your-username" target="_blank"><i class="fab fa-github"></i></a>
+        <a href="mailto:youremail@example.com"><i class="fas fa-envelope"></i></a>
+        <a href="https://instagram.com/your-instagram" target="_blank"><i class="fab fa-instagram"></i></a>
+        <a href="https://facebook.com/your-facebook" target="_blank"><i class="fab fa-facebook"></i></a>
+      </div>
+      <p>&copy; 2025 StudyFinder. Crafted with ❤ for learners. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Mobile nav toggle -->
+  <script>
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+    hamburger.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+    });
+  </script>
+
+</body>
+</html>

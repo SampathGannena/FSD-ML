@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Explore Jarvis</title>
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .chart-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 30%;
+      max-width: 320px;
+      background-color: #1e1e1e;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #333;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      color: #ffa500;
+      border-bottom: 1px solid #333;
+      padding-bottom: 0.5rem;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .sidebar li {
+      padding: 12px;
+      margin-bottom: 8px;
+      background-color: #2c2c2c;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .sidebar li:hover {
+      background-color: #3a3a3a;
+    }
+
+    .sidebar li:last-child {
+      background-color: #ff7f11;
+      color: #000;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #181818;
+    }
+
+    .chat-header {
+      padding: 1rem;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid #333;
+    }
+
+    .chat-header h2 {
+      font-size: 1.2rem;
+      color: #ffa500;
+    }
+
+    .chat-body {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-body p {
+      background-color: #ffa500;
+      color: #000;
+      padding: 10px 15px;
+      border-radius: 8px;
+      width: fit-content;
+      max-width: 70%;
+      margin-bottom: 10px;
+    }
+
+    .user-msg {
+      align-self: flex-end;
+      background-color: #333;
+      color: #fff;
+    }
+
+    .typing-indicator {
+      font-style: italic;
+      opacity: 0.7;
+    }
+
+    .chat-footer {
+      padding: 1rem;
+      border-top: 1px solid #333;
+      background-color: #1e1e1e;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chat-footer input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 20px;
+      background-color: #2c2c2c;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .chat-footer input::placeholder {
+      color: #aaa;
+    }
+
+    .emoji-btn, .file-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      color: #ffa500;
+    }
+
+    #file-upload {
+      display: none;
+    }
+
+    .send-btn {
+      padding: 8px 14px;
+      background-color: #f7432f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+
+    .send-btn:hover {
+      background-color: #e0a74d;
+    }
+    .send-btn:active {
+      background-color: #b1ef53;
+    }
+
+    .group-item {
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .group-item:hover {
+      background-color: #3a3a3a;
+    }
+
+    .selected-group {
+      background-color: #ffa500;
+      color: #000;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  
+
+  <!-- <script>
+        document.addEventListener('DOMContentLoaded', loadMatchedGroups);
+        const picker = new EmojiButton();
+        const emojiBtn = document.querySelector('#emoji-btn');
+        const input = document.querySelector('#chat-input');
+        const chatBody = document.querySelector('#chat-body');
+        let selectedGroupName = null;
+
+        emojiBtn.addEventListener('click', () => {
+          picker.togglePicker(emojiBtn);
+        });
+
+        picker.on('emoji', emoji => {
+          input.value += emoji;
+          input.focus();
+        });
+
+        async function handleSend(e) {
+          if (e.key === 'Enter') {
+            const msg = input.value.trim();
+            if (msg) {
+              appendMessage(msg, 'user-msg');
+              input.value = '';
+              showTyping();
+
+              const response = await fetch('http://localhost:7000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg }),
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                appendMessage(`Jarvis: ${data.response}`);
+              } else {
+                appendMessage('Sorry, there was an error. Please try again later.');
+              }
+            }
+          }
+        }
+
+        function appendMessage(content, className = '', isHTML = false) {
+          const msg = document.createElement('p');
+          msg[className ? 'classList' : 'textContent'] = className ? [className] : content;
+          if (isHTML) msg.innerHTML = content;
+          else msg.textContent = content;
+
+          chatBody.appendChild(msg);
+          chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        function showTyping() {
+          const typing = document.createElement('p');
+          typing.textContent = 'Jarvis is typing...';
+          typing.classList.add('typing-indicator');
+          chatBody.appendChild(typing);
+          chatBody.scrollTop = chatBody.scrollHeight;
+
+          setTimeout(() => {
+            chatBody.removeChild(typing);
+            appendMessage(`Jarvis: Here's a smart response to your message.`);
+          }, 1000);
+        }
+
+        // ✅ Load Matched Groups into Sidebar
+        async function loadMatchedGroups() {
+          console.log("Loading matched groups...");
+          try {
+            const res = await fetch('http://localhost:5000/api/match-groups');
+            const data = await res.json();
+          //   const data = {
+          //     groups: [
+          //       { group_name: "AI Enthusiasts" },
+          //       { group_name: "Math Wizards" },
+          //       { group_name: "Science Squad" }
+          //     ]
+          // };
+
+            const ul = document.getElementById("group-list");
+            const joinNew = ul.querySelector("li:last-child");
+            data.groups.forEach(group => {
+              const li = document.createElement("li");
+              li.textContent = `📘 ${group.group_name}`;
+              li.classList.add("group-item");
+
+              li.addEventListener('click', () => {
+                handleGroupSelection(group.group_name, li);
+              });
+
+              ul.insertBefore(li, joinNew);
+            });
+          } catch (err) {
+            console.error("Error fetching matched groups:", err);
+          }
+        }
+
+        // ✅ Handle Group Selection + Save to Backend
+        async function handleGroupSelection(groupName, element) {
+          selectedGroupName = groupName;
+
+          // Highlight selected group
+          document.querySelectorAll(".group-item").forEach(item => {
+            item.classList.remove("selected-group");
+          });
+          element.classList.add("selected-group");
+
+          try {
+            const response = await fetch('http://localhost:7000/api/groups/save-current-group', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('token')}` // Adjust based on your auth
+              },
+              body: JSON.stringify({ groupName })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+              console.log(data.message);
+            } else {
+              console.error(data.error || 'Failed to save group');
+            }
+          } catch (err) {
+            console.error("Error saving selected group:", err);
+          }
+        }
+
+        // window.onload = loadMatchedGroups;
+  </script> -->
+  <div class="chart-container">
+    <aside class="sidebar">
+      <h2>Your Groups</h2>
+      <ul id="group-list">
+        <!-- Dynamic group items will be inserted here -->
+        <li>➕ Join New Group</li>
+      </ul>
+    </aside>
+    <main class="chat-main">
+      <div class="chat-header">
+        <h2 id="chat-header-title">Select a Group to Chat</h2>
+      </div>
+      <div class="chat-body" id="chat-body">
+        <p><strong>Jarvis:</strong> Hello! Ready to explore some study tools?</p>
+      </div>
+      <div class="chat-footer">
+          <button class="emoji-btn" id="emoji-btn">😊</button>
+          <button class="file-btn" onclick="document.getElementById('file-upload').click()">📎</button>
+          <input type="file" id="file-upload" />
+          
+          <!-- Message input -->
+          <input type="text" id="chat-input" placeholder="Type a message..."/>
+
+          <!-- ✅ Add this Send button -->
+          <button class="send-btn" id="send-btn">Send</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMatchedGroups();
+      document.getElementById('send-btn').addEventListener('click', sendMessage);
+      let socket;
+      let selectedGroupName = null;
+      const chatBody = document.querySelector('#chat-body');
+      const input = document.querySelector('#chat-input');
+      const emojiBtn = document.querySelector('#emoji-btn');
+      const picker = new EmojiButton();
+      document.getElementById('file-upload').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file && selectedGroupName) {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('group', selectedGroupName);
+
+          fetch('http://localhost:5000/api/group-upload', {
+            method: 'POST',
+            body: formData
+          })
+          .then(res => res.json())
+          .then(data => {
+            alert('File uploaded to group: ' + selectedGroupName);
+            // Optionally, show the file in chat or group files list
+          })
+          .catch(err => {
+            alert('File upload failed');
+            console.error(err);
+          });
+        }
+      });
+
+      // Emoji Picker Setup
+      picker.on('emoji', emoji => {
+        input.value += emoji;
+        input.focus();
+      });
+
+      emojiBtn.addEventListener('click', () => {
+        picker.togglePicker(emojiBtn);
+      });
+
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+
+      async function loadMatchedGroups() {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('http://localhost:5000/api/match-groups', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          const ul = document.getElementById("group-list");
+          const joinNew = ul.querySelector("li:last-child");
+
+          if (!data.groups || !Array.isArray(data.groups)) {
+            alert("No groups found in response: " + JSON.stringify(data));
+            return;
+          }
+
+          data.groups.forEach(group => {
+            const li = document.createElement("li");
+            li.textContent = `📘 ${group.group_name}`;
+            li.classList.add("group-item");
+            li.addEventListener('click', () => handleGroupSelection(group.group_name, li));
+            ul.insertBefore(li, joinNew);
+          });
+        } catch (err) {
+          console.error("Error fetching matched groups:", err);
+        }
+      }
+
+      async function loadGroupFiles(groupName) {
+        const res = await fetch(`http://localhost:5000/api/group-files/${encodeURIComponent(groupName)}`);
+        const data = await res.json();
+        data.files.forEach(file => {
+          appendFileMessage(file);
+        });
+      }
+
+      function appendFileMessage(file) {
+          const msg = document.createElement('p');
+          msg.innerHTML = `<a href="http://localhost:5000/uploads/${file.filename}" target="_blank">📎 ${file.originalname}</a>`;
+          chatBody.appendChild(msg);
+          chatBody.scrollTop = chatBody.scrollHeight;
+      }
+
+      async function handleGroupSelection(groupName, element) {
+        selectedGroupName = groupName;
+        document.querySelectorAll(".group-item").forEach(item => {
+          item.classList.remove("selected-group");
+        });
+        element.classList.add("selected-group");
+        document.getElementById('chat-header-title').textContent = `Group: ${groupName}`;
+        chatBody.innerHTML = '';
+
+        await loadGroupFiles(groupName);
+        
+        if (socket) {
+          socket.close();
+        }
+
+        socket = new WebSocket('ws://localhost:5000');
+
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ type: 'join', group: groupName }));
+        };
+
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === 'history') {
+            // Load chat history
+            data.messages.forEach(msg => {
+              appendMessage(`${msg.sender}: ${msg.message}`, msg.sender === 'user' ? 'user-msg' : '');
+            });
+          } else if (data.group === selectedGroupName) {
+            const senderLabel = data.sender === 'user' ? 'user-msg' : '';
+            appendMessage(`${data.sender}: ${data.message}`, senderLabel);
+          }
+        };
+
+        socket.onerror = (err) => {
+          console.error("WebSocket error:", err);
+        };
+
+        socket.onclose = () => {
+          console.warn("WebSocket connection closed");
+        };
+      }
+
+      function appendMessage(content, className = '') {
+        const msg = document.createElement('p');
+        if (className) msg.classList.add(className);
+        msg.textContent = content;
+        chatBody.appendChild(msg);
+        chatBody.scrollTop = chatBody.scrollHeight;
+      }
+
+      function sendMessage() {
+        const msg = input.value.trim();
+        if (msg && selectedGroupName && socket && socket.readyState === WebSocket.OPEN) {
+          const messageObj = {
+            group: selectedGroupName,
+            sender: "user",
+            message: msg
+          };
+          socket.send(JSON.stringify(messageObj));
+          appendMessage(msg, 'user-msg');
+          input.value = '';
+        }
+      }
+
+      function handleSend(event) {
+        if (event.key === 'Enter') {
+          sendMessage();
+        }
+      }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Learner Profile</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background-color: #121212;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .bg-orange {
+      background-color: #ff6f00;
+    }
+    .badge-orange {
+      background-color: #ff6f00;
+      color: #121212;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    
+    .profile-card {
+      background-color: #1e1e1e;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 0 15px rgba(255, 111, 0, 0.3);
+      max-width: 800px;
+      margin: auto;
+    }
+    .text-muted {
+      color: #ffffff !important;
+    }
+
+    .rounded-img {
+      border-radius: 50%;
+      border: 3px solid #ff6f00;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+    }
+    .border-orange {
+      border-top: 2px solid #ff6f00;
+    }
+    .btn.bg-orange:hover {
+      background-color: #e66100;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .profile-card {
+      position: relative;
+      max-width: 400px;
+      width: 95vw;
+      margin: 0 auto;
+    }
+    .btn-close:hover {
+      color: #fff;
+      background: #ff6f00;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div id="profile-modal" class="modal-overlay">
+    <div class="profile-card text-center">
+      <button id="close-profile" class="btn-close" aria-label="Close" style="position:absolute;top:20px;right:30px;background:none;border:none;font-size:2rem;color:#ff6f00;">&times;</button>
+      <img id="profile-avatar" src="https://i.pravatar.cc/120" class="rounded-img mb-3" alt="Learner Avatar" />
+      <h3 id="profile-username">siddu</h3>
+      <p class="text-muted" id="profile-bio">Computer Science Undergrad | SRKR Engineering College</p>
+
+      <div class="row text-center mt-4">
+        <!-- <div class="col-md-4">
+          <h5>Courses Enrolled</h5>
+          <p class="fs-4" id="profile-courses">8</p>
+        </div> -->
+        <div class="col-md-4">
+          <h5>Streak</h5>
+          <p class="fs-4" id="profile-streak">21 Days 🔥</p>
+        </div>
+        <div class="col-md-4">
+          <h5>Achievements</h5>
+          <p class="fs-4" id="profile-badges">5 Badges 🏅</p>
+        </div>
+      </div>
+
+      <hr class="my-4 border-orange" />
+
+      <h5 class="mb-3">Groups Joined</h5>
+      <div class="d-flex flex-wrap justify-content-center gap-2" id="profile-groups">
+        <!-- Group badges will be inserted here dynamically -->
+      </div>
+
+      <div class="mt-4">
+        <a href="../landing/land.html" class="btn bg-orange text-dark me-2">Log Out</a>
+        <a href="groups.html" class="btn btn-outline-light">View Learning Path</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('close-profile').addEventListener('click', () => {
+      window.location.href = 'main.html';
+    });
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Redirect to login if not signed in
+        window.location.href = 'signin.html';
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:5000/api/profile', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const user = await res.json();
+
+        document.getElementById('profile-avatar').src = user.avatar;
+        document.getElementById('profile-username').textContent = user.username || user.fullname || '';
+        document.getElementById('profile-bio').textContent = user.bio;
+        // document.getElementById('profile-courses').textContent = user.courses;
+        document.getElementById('profile-streak').textContent = user.streak + '🔥';
+        // document.getElementById('profile-badges').textContent = user.badges + '🏅';
+        const badgesDiv = document.getElementById('profile-badges');
+        badgesDiv.innerHTML = '';
+
+        const badgeMap = {
+          'bronze_group': '🥉 Bronze',
+          'silver_group': '🥈 Silver',
+          'gold_group': '🥇 Gold',
+          'diamond_group': '💎 Diamond Master',
+          'master_group': '👑 Crown Master',
+          'ace_elites':'🦅 Ace Elite',
+          'conqueror_group': '🔥 Conqueror King'
+        };
+        (user.badges || []).forEach(badge => {
+          const span = document.createElement('span');
+          span.className = 'badge badge-success mx-1';
+          span.textContent = badgeMap[badge] || badge; 
+          badgesDiv.appendChild(span);
+        });
+
+        const groupsDiv = document.getElementById('profile-groups');
+        groupsDiv.innerHTML = '';
+        (user.groups || []).forEach(group => {
+          const span = document.createElement('span');
+          span.className = 'badge badge-orange px-3 py-2';
+          span.textContent = group;
+          groupsDiv.appendChild(span);
+        });
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      }
+    });
+  </script>
+</body>
+</html>

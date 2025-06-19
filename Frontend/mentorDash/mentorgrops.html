@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mentor Groups</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <link rel="stylesheet" href="mentorgrops.css" />
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <h2 class="sidebar-title">Your Mentees</h2>
+      <ul class="group-list">
+        <li class="group-item blue">
+          <button class="student-btn" data-student="Alice Johnson">
+            <img src="pic1.jpg" alt="Alice Johnson" class="profile-pic" />
+            <span>Alice Johnson</span>
+          </button>
+          <div class="performance-box" id="perf-Alice Johnson" style="display: none;"></div>
+        </li>
+        <li class="group-item green">
+          <button class="student-btn" data-student="Michael Smith">
+            <img src="pic3.jpg" alt="Michael Smith" class="profile-pic" />
+            <span>Michael Smith</span>
+          </button>
+          <div class="performance-box" id="perf-Michael Smith" style="display: none;"></div>
+        </li>
+        <li class="group-item pink">
+          <button class="student-btn" data-student="Sophia Lee">
+            <img src="pic2.jpg" alt="Sophia Lee" class="profile-pic" />
+            <span>Sophia Lee</span>
+          </button>
+          <div class="performance-box" id="perf-Sophia Lee" style="display: none;"></div>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="main-header">
+        <h2 id="chat-header">Welcome</h2>
+      </header>
+
+      <section class="message-section" id="chat-section">
+        <div class="message-box">
+          <b>System:</b> Hello! Select a mentee to view performance.
+        </div>
+      </section>
+
+      <footer class="input-footer">
+        <button class="emoji-btn">😊</button>
+        <button class="attach-btn"><i class="fas fa-paperclip"></i></button>
+        <input type="text" placeholder="Type a message..." class="chat-input" id="chat-input" />
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const studentButtons = document.querySelectorAll('.student-btn');
+    const chatHeader = document.getElementById('chat-header');
+    const chatSection = document.getElementById('chat-section');
+    const chatInput = document.getElementById('chat-input');
+
+    let currentStudent = null;
+
+    const studentData = {
+      "Alice Johnson": {
+        greeting: "Hi Mentor! I'm ready to level up!",
+        performance: {
+          problemsSolved: 120,
+          accuracy: "92%",
+          level: "Intermediate"
+        }
+      },
+      "Michael Smith": {
+        greeting: "Hello! Excited to share my progress.",
+        performance: {
+          problemsSolved: 85,
+          accuracy: "87%",
+          level: "Beginner"
+        }
+      },
+      "Sophia Lee": {
+        greeting: "Hey there! Check out my stats 💻",
+        performance: {
+          problemsSolved: 150,
+          accuracy: "96%",
+          level: "Advanced"
+        }
+      }
+    };
+
+    studentButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const studentName = button.getAttribute('data-student');
+        const student = studentData[studentName];
+        currentStudent = studentName;
+
+        // Update header
+        chatHeader.textContent = `Chat with ${studentName}`;
+
+        // Clear chat and show greeting
+        chatSection.innerHTML = `
+          <div class="message-box"><b>${studentName}:</b> ${student.greeting}</div>
+        `;
+
+        // Update input
+        chatInput.value = '';
+        chatInput.placeholder = `Message ${studentName}...`;
+        chatInput.dataset.student = studentName;
+
+        // Hide all performance boxes
+        document.querySelectorAll('.performance-box').forEach(box => box.style.display = 'none');
+
+        // Show performance box for selected student
+        const perfBox = document.getElementById(`perf-${studentName}`);
+        if (perfBox) {
+          perfBox.innerHTML = `
+            <b>📊 Performance</b><br/>
+            ✔️ Solved: ${student.performance.problemsSolved}<br/>
+            🎯 Accuracy: ${student.performance.accuracy}<br/>
+            🚀 Level: ${student.performance.level}
+          `;
+          perfBox.style.display = 'block';
+        }
+      });
+    });
+
+    chatInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter' && chatInput.value.trim() !== '' && currentStudent) {
+        const msg = chatInput.value.trim();
+        const newMessage = document.createElement('div');
+        newMessage.classList.add('message-box');
+        newMessage.innerHTML = `<b>You:</b> ${msg}`;
+        chatSection.appendChild(newMessage);
+        chatInput.value = '';
+        chatSection.scrollTop = chatSection.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>

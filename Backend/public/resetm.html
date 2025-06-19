@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reset Password</title>
+  <link rel="stylesheet" href="resetm.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Welcome Panel -->
+    <div class="welcome-panel">
+      <h1>Reset Password 🔐</h1>
+      <p>Create your new password and continue your journey.</p>
+      <img src="../../Frontend/credentials/image.jpg" alt="Reset Illustration" class="welcome-image">
+    </div>
+
+    <!-- Reset Password Form -->
+    <div class="forgot-box">
+      <h2>🔄 Create New Password</h2>
+      <form id="reset-form">
+        <div class="input-group">
+          <input type="password" id="new-password" required>
+          <label>New Password</label>
+        </div>
+        <button type="submit" class="btn">Reset Password</button>
+        <div class="signin-link">
+          <p>Back to <a href="../../Frontend/mentor/signin.html">Sign In</a></p>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script> 
+   const form = document.getElementById("reset-form"); 
+   form.addEventListener("submit", async (e) => { 
+    e.preventDefault(); 
+    const password = document.getElementById("new-password").value; // Get token from URL
+   const urlParams = new URLSearchParams(window.location.search); 
+   const token = urlParams.get("token"); if (!token) { 
+    alert("Reset token missing in URL."); return; 
+    } 
+    try { 
+        const res = await fetch("http://localhost:5000/api/mentor/reset-password", 
+        { method: "POST", headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ token, password }) }); 
+        const result = await res.json(); 
+        alert(result.message); 
+        if (res.ok) { 
+            window.location.href = "../../Frontend/mentor/signin.html"; 
+            } } 
+            catch (error) {
+                 alert("Something went wrong. Try again later."); 
+                 } });
+     </script>
+</body>
+</html>

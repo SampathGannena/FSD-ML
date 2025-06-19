@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="signup.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- Welcome Panel -->
+        <div class="welcome-panel">
+            <h1>Join Us! 🚀</h1>
+            <p>Welcome, Mentor – your knowledge will light the way for tomorrow’s leaders.</p>
+            <img src="../credentials/image.jpg" alt="Study Group Image" class="welcome-image">
+        </div>
+        
+        <!-- Sign-Up Form -->
+        <div class="signup-box">
+            <h2>📝 Sign Up</h2>
+            <form id="signup-form">
+                <div class="input-group">
+                    <input type="text" id="domain-id" required>
+                    <label>Domain ID</label>
+                </div>
+                <p class="domain-note">NOTE:The Domain ID represents your subject area or expertise</p>
+                
+                <div class="input-group">
+                    <input type="text" id="fullname" required>
+                    <label>Full Name</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="email" id="email" required>
+                    <label>Email Address</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" required>
+                    <label>Password</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="confirm-password" required>
+                    <label>Confirm Password</label>
+                </div>
+
+                <button type="submit" class="btn">Sign Up</button>
+                <p class="signin-link">Already have an account? <a href="signin.html">Sign In</a></p>
+            </form>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('signup-form');
+      
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+      
+          const domainId = document.getElementById('domain-id').value;
+          const fullname = document.getElementById('fullname').value;
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          const confirmPassword = document.getElementById('confirm-password').value;
+      
+          if (password !== confirmPassword) {
+            return alert('Passwords do not match!');
+          }
+      
+          try {
+            const res = await fetch('http://localhost:5000/api/mentor/signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ domainId, fullname, email, password })
+            });
+      
+            const data = await res.json();
+            alert(data.message);
+      
+            if (res.ok) {
+              window.location.href = 'signin.html';
+            }
+          } catch (err) {
+            alert('Signup failed');
+          }
+        });
+      </script>
+      
+</body>
+</html>
