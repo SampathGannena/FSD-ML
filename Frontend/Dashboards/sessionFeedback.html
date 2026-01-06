@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Feedback</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .feedback-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 107, 0, 0.2);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .feedback-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .feedback-header h1 {
+      color: #ff6b00;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .feedback-header p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+    }
+
+    .session-info {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-left: 4px solid #ff6b00;
+    }
+
+    .session-info h3 {
+      color: white;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .session-info p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      margin: 5px 0;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      display: block;
+      color: white;
+      font-size: 15px;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .star-rating {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      padding: 20px 0;
+    }
+
+    .star {
+      font-size: 40px;
+      color: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .star:hover,
+    .star.active {
+      color: #ffd700;
+      transform: scale(1.2);
+    }
+
+    .rating-label {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      color: white;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 120px;
+      transition: all 0.3s ease;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #ff6b00;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    textarea::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+      color: white;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(255, 107, 0, 0.4);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-cancel {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-cancel:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .success-message {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #ff6b00;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+      .feedback-container {
+        padding: 25px;
+      }
+
+      .feedback-header h1 {
+        font-size: 24px;
+      }
+
+      .star {
+        font-size: 32px;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="feedback-container">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading session details...</p>
+    </div>
+
+    <div id="feedback-form" style="display: none;">
+      <div class="feedback-header">
+        <h1><i class="fas fa-star"></i> Rate Your Session</h1>
+        <p>Your feedback helps us improve the mentoring experience</p>
+      </div>
+
+      <div id="success-message" class="success-message"></div>
+      <div id="error-message" class="error-message"></div>
+
+      <div class="session-info">
+        <h3 id="session-title">Session Title</h3>
+        <p><i class="fas fa-user"></i> Mentor: <span id="mentor-name">-</span></p>
+        <p><i class="fas fa-calendar"></i> Date: <span id="session-date">-</span></p>
+        <p><i class="fas fa-clock"></i> Duration: <span id="session-duration">-</span> minutes</p>
+      </div>
+
+      <form id="feedbackForm">
+        <div class="form-group">
+          <label>How would you rate this session?</label>
+          <div class="star-rating">
+            <i class="fas fa-star star" data-rating="1"></i>
+            <i class="fas fa-star star" data-rating="2"></i>
+            <i class="fas fa-star star" data-rating="3"></i>
+            <i class="fas fa-star star" data-rating="4"></i>
+            <i class="fas fa-star star" data-rating="5"></i>
+          </div>
+          <div class="rating-label" id="rating-label">Select a rating</div>
+          <input type="hidden" id="rating-input" name="rating" required>
+        </div>
+
+        <div class="form-group">
+          <label><i class="fas fa-comment"></i> Additional Comments (Optional)</label>
+          <textarea 
+            id="comment" 
+            name="comment" 
+            placeholder="Share your experience, what went well, and suggestions for improvement..."
+          ></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-cancel" onclick="goBack()">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+          <button type="submit" class="btn btn-submit" id="submit-btn">
+            <i class="fas fa-paper-plane"></i> Submit Feedback
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let selectedRating = 0;
+    let sessionId = null;
+
+    // Get session ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    sessionId = urlParams.get('sessionId');
+
+    if (!sessionId) {
+      // Try to get from path (e.g., /feedback/sessionId)
+      const pathParts = window.location.pathname.split('/');
+      sessionId = pathParts[pathParts.length - 1];
+    }
+
+    // Star rating functionality
+    const stars = document.querySelectorAll('.star');
+    const ratingInput = document.getElementById('rating-input');
+    const ratingLabel = document.getElementById('rating-label');
+
+    const ratingTexts = {
+      1: '⭐ Poor - Not helpful',
+      2: '⭐⭐ Fair - Below expectations',
+      3: '⭐⭐⭐ Good - Met expectations',
+      4: '⭐⭐⭐⭐ Very Good - Exceeded expectations',
+      5: '⭐⭐⭐⭐⭐ Excellent - Outstanding!'
+    };
+
+    stars.forEach(star => {
+      star.addEventListener('click', function() {
+        selectedRating = parseInt(this.getAttribute('data-rating'));
+        ratingInput.value = selectedRating;
+        updateStars(selectedRating);
+        ratingLabel.textContent = ratingTexts[selectedRating];
+        ratingLabel.style.color = '#ffd700';
+      });
+
+      star.addEventListener('mouseenter', function() {
+        const hoverRating = parseInt(this.getAttribute('data-rating'));
+        updateStars(hoverRating);
+      });
+    });
+
+    document.querySelector('.star-rating').addEventListener('mouseleave', function() {
+      updateStars(selectedRating);
+    });
+
+    function updateStars(rating) {
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    // Load session details
+    async function loadSessionDetails() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/Frontend/credentials/signin.html';
+          return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/auth/session/${sessionId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const session = data.session;
+
+          // Check if feedback already submitted
+          if (session.feedback.menteeRating) {
+            showError('You have already submitted feedback for this session');
+            document.getElementById('feedbackForm').style.display = 'none';
+            setTimeout(() => goBack(), 2000);
+            return;
+          }
+
+          // Populate session details
+          document.getElementById('session-title').textContent = session.title;
+          document.getElementById('mentor-name').textContent = session.menteeName || 'Mentor';
+          document.getElementById('session-date').textContent = new Date(session.scheduledDate).toLocaleDateString();
+          document.getElementById('session-duration').textContent = session.duration;
+
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('feedback-form').style.display = 'block';
+        } else {
+          throw new Error('Failed to load session details');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').innerHTML = `
+          <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ef4444;"></i>
+          <p style="color: #ef4444; margin-top: 15px;">Failed to load session details</p>
+          <button onclick="goBack()" class="btn btn-cancel" style="margin-top: 20px; max-width: 200px;">Go Back</button>
+        `;
+      }
+    }
+
+    // Submit feedback
+    document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      if (!selectedRating) {
+        showError('Please select a rating');
+        return;
+      }
+
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/auth/session-feedback/${sessionId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            menteeRating: selectedRating,
+            menteeComment: document.getElementById('comment').value
+          })
+        });
+
+        if (response.ok) {
+          showSuccess('Thank you! Your feedback has been submitted successfully.');
+          setTimeout(() => {
+            window.location.href = '/Frontend/Dashboards/main.html';
+          }, 2000);
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to submit feedback');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showError(error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Feedback';
+      }
+    });
+
+    function showSuccess(message) {
+      const successEl = document.getElementById('success-message');
+      successEl.textContent = message;
+      successEl.style.display = 'block';
+      document.getElementById('error-message').style.display = 'none';
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-message');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      document.getElementById('success-message').style.display = 'none';
+    }
+
+    function goBack() {
+      window.location.href = '/Frontend/Dashboards/main.html';
+    }
+
+    // Load session on page load
+    if (sessionId) {
+      loadSessionDetails();
+    } else {
+      document.getElementById('loading').innerHTML = `
+        <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ef4444;"></i>
+        <p style="color: #ef4444; margin-top: 15px;">Invalid session ID</p>
+        <button onclick="goBack()" class="btn btn-cancel" style="margin-top: 20px; max-width: 200px;">Go Back</button>
+      `;
+    }
+  </script>
+</body>
+</html>

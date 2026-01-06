@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Room - StudyFinder</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="videoRoom.css">
+  <script src="../js/notifications.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="video-room-container">
+    <!-- Header -->
+    <header class="room-header">
+      <div class="room-info">
+        <h1 id="room-title">Study Session</h1>
+        <span class="room-code" id="room-code">Room: ------</span>
+      </div>
+      <div class="room-timer">
+        <i class="fas fa-clock"></i>
+        <span id="session-timer">00:00:00</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" id="copy-link-btn" title="Copy invite link">
+          <i class="fas fa-link"></i>
+        </button>
+        <button class="btn-icon btn-danger" id="leave-btn" title="Leave room">
+          <i class="fas fa-phone-slash"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="room-main">
+      <!-- Video Grid -->
+      <div class="video-grid" id="video-grid">
+        <!-- Local video -->
+        <div class="video-tile local-video" id="local-video-container">
+          <video id="local-video" autoplay muted playsinline></video>
+          <div class="video-overlay">
+            <span class="participant-name">You</span>
+          </div>
+        </div>
+        <!-- Remote videos will be added dynamically -->
+      </div>
+
+      <!-- Sidebar (Chat/Participants) -->
+      <aside class="room-sidebar" id="room-sidebar">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="chat">
+            <i class="fas fa-comments"></i> Chat
+          </button>
+          <button class="tab-btn" data-tab="participants">
+            <i class="fas fa-users"></i> Participants
+          </button>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="tab-content active" id="chat-panel">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-welcome">
+              <i class="fas fa-hand-wave"></i>
+              <p>Welcome to the session! Send a message to get started.</p>
+            </div>
+          </div>
+          <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+            <button id="send-chat-btn">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Participants Panel -->
+        <div class="tab-content" id="participants-panel">
+          <div class="participants-list" id="participants-list">
+            <!-- Participants will be added dynamically -->
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Controls Bar -->
+    <footer class="controls-bar">
+      <div class="control-group">
+        <button class="control-btn" id="toggle-video" title="Toggle video">
+          <i class="fas fa-video"></i>
+          <span>Video</span>
+        </button>
+        <button class="control-btn" id="toggle-audio" title="Toggle microphone">
+          <i class="fas fa-microphone"></i>
+          <span>Mic</span>
+        </button>
+        <button class="control-btn" id="toggle-screen" title="Share screen">
+          <i class="fas fa-desktop"></i>
+          <span>Share</span>
+        </button>
+      </div>
+      
+      <div class="control-group center">
+        <button class="control-btn" id="toggle-chat" title="Toggle chat">
+          <i class="fas fa-comments"></i>
+          <span>Chat</span>
+        </button>
+        <button class="control-btn" id="toggle-participants" title="Show participants">
+          <i class="fas fa-users"></i>
+          <span>Participants</span>
+        </button>
+        <button class="control-btn" id="raise-hand" title="Raise hand">
+          <i class="fas fa-hand"></i>
+          <span>Raise</span>
+        </button>
+      </div>
+      
+      <div class="control-group">
+        <button class="control-btn btn-leave" id="end-call-btn" title="End call">
+          <i class="fas fa-phone-slash"></i>
+          <span>End</span>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Join Modal -->
+  <div class="modal" id="join-modal">
+    <div class="modal-content">
+      <h2>Join Video Room</h2>
+      <div class="preview-container">
+        <video id="preview-video" autoplay muted playsinline></video>
+      </div>
+      <div class="join-options">
+        <label class="toggle-option">
+          <input type="checkbox" id="join-with-video" checked>
+          <span><i class="fas fa-video"></i> Join with video</span>
+        </label>
+        <label class="toggle-option">
+          <input type="checkbox" id="join-with-audio" checked>
+          <span><i class="fas fa-microphone"></i> Join with audio</span>
+        </label>
+      </div>
+      <input type="text" id="display-name" placeholder="Your name" class="name-input">
+      <button class="btn-primary" id="join-room-btn">Join Room</button>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loader"></div>
+    <p>Connecting...</p>
+  </div>
+
+  <script src="videoRoom.js"></script>
+</body>
+</html>

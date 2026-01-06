@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In</title>
+    <title>Mentor Sign In</title>
     <link rel="stylesheet" href="signin.css">
+    <script src="../js/notifications.js"></script>
 </head>
 <body>
 
@@ -65,15 +66,46 @@
                 const result = await res.json();
 
                 if (res.ok) {
-  alert(result.message);
-  localStorage.setItem('mentorToken', result.token);
-  window.location.href = '../mentorDash/mentorMain.html';
-} else {
-  alert(result.message || result.error || 'Sign-in failed.');
-}
+                    console.log('✅ Mentor signin successful:', result);
+                    
+                    // Store mentor token and info
+                    localStorage.setItem('mentorToken', result.token);
+                    
+                    if (result.mentor) {
+                        localStorage.setItem('mentorId', result.mentor.id);
+                        localStorage.setItem('mentorName', result.mentor.fullname);
+                        localStorage.setItem('mentorEmail', result.mentor.email);
+                        localStorage.setItem('mentorDomain', result.mentor.domainId);
+                    }
+                    
+                    // Show success notification
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('Welcome back, ' + (result.mentor?.fullname || 'Mentor') + '!', 'Login Successful');
+                    } else {
+                        alert(result.message);
+                    }
+                    
+                    // Small delay to ensure storage is complete
+                    setTimeout(() => {
+                        console.log('🔄 Redirecting to mentor dashboard...');
+                        window.location.href = '../mentorDash/mentorMain.html';
+                    }, 500);
+                } else {
+                    console.error('❌ Signin failed:', result);
+                    if (typeof Toast !== 'undefined') {
+                        Toast.error(result.message || result.error || 'Sign-in failed.', 'Login Failed');
+                    } else {
+                        alert(result.message || result.error || 'Sign-in failed.');
+                    }
+                }
 
             } catch (err) {
-                alert('Error signing in. Please try again.');
+                console.error('❌ Error signing in:', err);
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Unable to connect to server. Please try again.', 'Connection Error');
+                } else {
+                    alert('Error signing in. Please try again.');
+                }
             }
         });
     </script>

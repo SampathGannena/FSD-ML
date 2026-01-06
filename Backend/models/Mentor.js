@@ -7,7 +7,7 @@ const mentorSchema = new mongoose.Schema({
   password: { type: String, required: true },
   resetToken: String,
   resetTokenExpiry: Date,
-
+  groups: [{ type: String }], // Array of group names the mentor has joined
 });
 
 module.exports = mongoose.model('Mentor', mentorSchema);

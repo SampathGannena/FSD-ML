@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentor Auth Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #ff6b00;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #ff6b00;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ff4b00;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #ff6b00;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Mentor Authentication Test</h1>
+
+    <div class="test-section">
+        <h2>1. Check LocalStorage</h2>
+        <button onclick="checkStorage()">Check Storage</button>
+        <button onclick="clearStorage()">Clear All Storage</button>
+        <div id="storage-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Signin</h2>
+        <input type="text" id="test-domain" placeholder="Domain ID" value="web-development">
+        <input type="email" id="test-email" placeholder="Email">
+        <input type="password" id="test-password" placeholder="Password">
+        <button onclick="testSignin()">Sign In</button>
+        <div id="signin-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Token Verification</h2>
+        <button onclick="testTokenVerification()">Verify Token</button>
+        <div id="verify-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Navigation Test</h2>
+        <button onclick="goToDashboard()">Go to Dashboard</button>
+        <div id="nav-result" class="result"></div>
+    </div>
+
+    <script>
+        function checkStorage() {
+            const result = document.getElementById('storage-result');
+            const mentorToken = localStorage.getItem('mentorToken');
+            const mentorId = localStorage.getItem('mentorId');
+            const mentorName = localStorage.getItem('mentorName');
+            const mentorEmail = localStorage.getItem('mentorEmail');
+            
+            result.className = 'result ' + (mentorToken ? 'success' : 'error');
+            result.textContent = JSON.stringify({
+                hasToken: !!mentorToken,
+                tokenPreview: mentorToken ? mentorToken.substring(0, 30) + '...' : null,
+                mentorId: mentorId,
+                mentorName: mentorName,
+                mentorEmail: mentorEmail,
+                allKeys: Object.keys(localStorage)
+            }, null, 2);
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('Storage cleared!');
+            checkStorage();
+        }
+
+        async function testSignin() {
+            const result = document.getElementById('signin-result');
+            result.textContent = 'Signing in...';
+            
+            const domainId = document.getElementById('test-domain').value;
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+
+            try {
+                const response = await fetch('http://localhost:5000/api/mentor/signin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domainId, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('mentorToken', data.token);
+                    if (data.mentor) {
+                        localStorage.setItem('mentorId', data.mentor.id);
+                        localStorage.setItem('mentorName', data.mentor.fullname);
+                        localStorage.setItem('mentorEmail', data.mentor.email);
+                    }
+                    
+                    result.className = 'result success';
+                    result.textContent = '✅ SUCCESS!\n\n' + JSON.stringify(data, null, 2);
+                } else {
+                    result.className = 'result error';
+                    result.textContent = '❌ FAILED\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = '❌ ERROR\n\n' + error.message;
+            }
+        }
+
+        async function testTokenVerification() {
+            const result = document.getElementById('verify-result');
+            result.textContent = 'Verifying token...';
+            
+            const token = localStorage.getItem('mentorToken');
+            
+            if (!token) {
+                result.className = 'result error';
+                result.textContent = '❌ No token found in storage';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/mentor/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.textContent = '✅ TOKEN VALID!\n\n' + JSON.stringify(data, null, 2);
+                } else {
+                    result.className = 'result error';
+                    result.textContent = '❌ TOKEN INVALID\n\nStatus: ' + response.status + '\n\n' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = '❌ ERROR\n\n' + error.message;
+            }
+        }
+
+        function goToDashboard() {
+            const result = document.getElementById('nav-result');
+            const token = localStorage.getItem('mentorToken');
+            
+            if (!token) {
+                result.className = 'result error';
+                result.textContent = '❌ No token found. Please sign in first.';
+                return;
+            }
+            
+            result.className = 'result success';
+            result.textContent = '✅ Redirecting to dashboard in 2 seconds...';
+            
+            setTimeout(() => {
+                window.location.href = '../mentorDash/mentorMain.html';
+            }, 2000);
+        }
+
+        // Auto-check storage on load
+        window.onload = checkStorage;
+    </script>
+</body>
+</html>

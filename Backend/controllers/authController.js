@@ -107,5 +107,22 @@ exports.resetPassword = async (req, res) => {
       res.status(500).json({ message: 'Something went wrong. Please try again.' });
     }
   };
+
+// Logout endpoint - invalidates the current session
+exports.logout = async (req, res) => {
+    try {
+      // In a simple JWT implementation, we can't easily blacklist tokens
+      // But we can update the user's lastLogout time and compare it with token issuance
+      const user = req.user; // from authMiddleware
+      
+      // Update lastLogout timestamp
+      user.lastLogout = new Date();
+      await user.save();
+      
+      res.status(200).json({ message: 'Logged out successfully!' });
+    } catch (err) {
+      res.status(500).json({ error: 'Logout failed' });
+    }
+};
   
   

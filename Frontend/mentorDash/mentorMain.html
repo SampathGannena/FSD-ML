@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>StudyFinder - Mentor Dashboard</title>
+  <script src="../js/notifications.js"></script>
+  <script src="../js/mentor-auth-guard.js"></script>
   <link rel="stylesheet" href="mentorMain.css" />
   <link
     rel="stylesheet"
@@ -22,6 +24,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="#home" >Home</a></li>
+            <li><a href="mentorAdvancedDashboard.html">Advanced Dashboard</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#about">About Us</a></li>
             <li><a href="Mprofile.html">Profile</a></li>
@@ -38,7 +41,7 @@
     <div class="hero-content">
       <h1>Guide. Inspire. Elevate.</h1>
       <p>Help students succeed by mentoring them through AI-powered group suggestions based on their preferences and learning styles.</p>
-      <a href="mentorgrops.html" class="btn-primary"> Your Mentees</a>
+      <a href="mentorAdvancedDashboard.html" class="btn-primary">📊 Advanced Dashboard</a>
     </div>
     <img src="mentorlogo1.jpg" alt="Mentor Illustration" class="hero-img" />
   </section>
@@ -57,6 +60,60 @@
       <div class="card">
         <h3>⏰ Time-based Suggestions</h3>
         <p>Manage your schedule by suggesting optimal study groups for your mentees based on availability.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="study-groups" id="study-groups">
+    <div class="groups-tabs">
+      <button class="tab-btn active" onclick="switchTab('my-groups')">
+        <i class="fas fa-user-friends"></i> My Groups
+      </button>
+      <button class="tab-btn" onclick="switchTab('all-groups')">
+        <i class="fas fa-search"></i> Discover Groups
+      </button>
+    </div>
+
+    <!-- My Groups Tab -->
+    <div id="my-groups-tab" class="tab-content active">
+      <h2>My Study Groups</h2>
+      <p>Collaborate with your students and fellow mentors in these groups</p>
+      
+      <div id="my-groups-container" class="groups-grid">
+        <div class="loading-groups">
+          <div class="spinner"></div>
+          <p>Loading your groups...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Groups Tab -->
+    <div id="all-groups-tab" class="tab-content">
+      <h2>Discover Study Groups</h2>
+      <p>Join active study groups to collaborate with students and other mentors</p>
+      
+      <div class="groups-filters">
+        <input type="text" id="search-groups" placeholder="🔍 Search groups..." />
+        <select id="category-filter">
+          <option value="all">All Categories</option>
+          <option value="Technology">Technology</option>
+          <option value="Science">Science</option>
+          <option value="Mathematics">Mathematics</option>
+          <option value="Programming">Programming</option>
+          <option value="General">General</option>
+        </select>
+        <select id="status-filter">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+
+      <div id="groups-container" class="groups-grid">
+        <div class="loading-groups">
+          <div class="spinner"></div>
+          <p>Loading study groups...</p>
+        </div>
       </div>
     </div>
   </section>
@@ -164,6 +221,879 @@
       <p>&copy; 2025 StudyFinder. Crafted with ❤ for mentors. All rights reserved.</p>
     </div>
   </footer>
+
+  <style>
+    .study-groups {
+      padding: 80px 5%;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    .groups-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .tab-btn {
+      padding: 12px 30px;
+      background: rgba(26, 26, 46, 0.5);
+      border: 2px solid rgba(255, 107, 0, 0.3);
+      border-radius: 25px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 107, 0, 0.1);
+      border-color: #ff6b00;
+      color: #ff6b00;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+      border-color: #ff6b00;
+      color: white;
+      box-shadow: 0 5px 20px rgba(255, 107, 0, 0.4);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .study-groups h2 {
+      text-align: center;
+      font-size: 2.5rem;
+      color: #ff6b00;
+      margin-bottom: 10px;
+    }
+
+    .study-groups p {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 40px;
+      font-size: 1.1rem;
+    }
+
+    .groups-filters {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .groups-filters input,
+    .groups-filters select {
+      padding: 12px 20px;
+      background: rgba(26, 26, 46, 0.7);
+      border: 1px solid rgba(255, 107, 0, 0.3);
+      border-radius: 10px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .groups-filters input {
+      flex: 1;
+      min-width: 300px;
+      max-width: 500px;
+    }
+
+    .groups-filters select {
+      min-width: 180px;
+    }
+
+    .groups-filters input:focus,
+    .groups-filters select:focus {
+      border-color: #ff6b00;
+      background: rgba(26, 26, 46, 0.9);
+    }
+
+    .groups-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 30px;
+      margin-top: 30px;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .group-card {
+      background: rgba(26, 26, 46, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 107, 0, 0.2);
+      border-radius: 15px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .group-card:hover {
+      transform: translateY(-5px);
+      border-color: #ff6b00;
+      box-shadow: 0 10px 30px rgba(255, 107, 0, 0.3);
+    }
+
+    .group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      gap: 15px;
+    }
+
+    .group-name {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #ff6b00;
+      margin-bottom: 8px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .group-status {
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .group-status.active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .group-status.pending {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+    }
+
+    .group-description {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 15px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex-grow: 1;
+      min-height: 60px;
+    }
+
+    .group-meta {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .group-meta span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .group-tags {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      min-height: 28px;
+    }
+
+    .group-tag {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+    }
+
+    .group-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .btn-join,
+    .btn-view {
+      flex: 1;
+      padding: 12px 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .btn-join {
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+      color: white;
+    }
+
+    .btn-join:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 107, 0, 0.4);
+    }
+
+    .btn-join.joined {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+      cursor: default;
+    }
+
+    .btn-view {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+    }
+
+    .btn-view:hover {
+      background: rgba(59, 130, 246, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .btn-manage {
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: #8b5cf6;
+    }
+
+    .btn-manage:hover {
+      background: rgba(139, 92, 246, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .my-group-card {
+      position: relative;
+      padding-top: 50px;
+      border: 2px solid rgba(255, 107, 0, 0.3);
+    }
+
+    .my-group-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 107, 0, 0.08), rgba(139, 92, 246, 0.08));
+      border-radius: 15px;
+      z-index: 0;
+    }
+
+    .my-group-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .my-group-card .group-header {
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+
+    .group-role-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: white;
+      box-shadow: 0 3px 10px rgba(139, 92, 246, 0.4);
+      z-index: 10;
+    }
+
+    .group-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 107, 0, 0.2);
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 10px;
+      background: rgba(255, 107, 0, 0.05);
+      border-radius: 8px;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ff6b00;
+      margin-bottom: 8px;
+      line-height: 1;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .loading-groups {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #ff6b00;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-groups {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 40px;
+      color: rgba(255, 255, 255, 0.5);
+      background: rgba(26, 26, 46, 0.5);
+      border-radius: 15px;
+      border: 2px dashed rgba(255, 107, 0, 0.2);
+    }
+
+    .empty-groups i {
+      font-size: 5rem;
+      margin-bottom: 25px;
+      opacity: 0.4;
+      color: #ff6b00;
+    }
+
+    .empty-groups h3 {
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .empty-groups p {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    @media (max-width: 1200px) {
+      .groups-grid {
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .study-groups {
+        padding: 60px 4%;
+      }
+
+      .study-groups h2 {
+        font-size: 2rem;
+      }
+
+      .groups-tabs {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .tab-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .groups-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .groups-filters {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .groups-filters input,
+      .groups-filters select {
+        width: 100%;
+        min-width: unset;
+        max-width: unset;
+      }
+
+      .group-card {
+        padding: 20px;
+      }
+
+      .group-meta {
+        gap: 10px;
+      }
+
+      .group-actions {
+        flex-direction: column;
+      }
+
+      .btn-join,
+      .btn-view,
+      .btn-manage {
+        width: 100%;
+      }
+
+      .group-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .stat-value {
+        font-size: 1.4rem;
+      }
+
+      .stat-label {
+        font-size: 0.65rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .study-groups h2 {
+        font-size: 1.75rem;
+      }
+
+      .group-name {
+        font-size: 1.1rem;
+      }
+
+      .group-meta span {
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+
+  <script>
+    let allGroups = [];
+    let myGroups = [];
+    let mentorData = null;
+
+    // Load groups on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const token = localStorage.getItem('mentorToken');
+      if (!token) {
+        window.location.href = '../credentials/mentor/signin.html';
+        return;
+      }
+
+      // First load mentor profile to get mentorData
+      try {
+        const profileResponse = await fetch('http://localhost:5000/api/mentor/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          mentorData = profileData.profile;
+        }
+      } catch (error) {
+        console.error('Error loading mentor profile:', error);
+      }
+
+      // Then load groups
+      await Promise.all([
+        loadStudyGroups(),
+        loadMyGroups()
+      ]);
+      setupFilters();
+    });
+
+    // Switch between tabs
+    function switchTab(tabName) {
+      const tabs = document.querySelectorAll('.tab-btn');
+      const contents = document.querySelectorAll('.tab-content');
+      
+      tabs.forEach(tab => tab.classList.remove('active'));
+      contents.forEach(content => content.classList.remove('active'));
+      
+      if (tabName === 'my-groups') {
+        tabs[0].classList.add('active');
+        document.getElementById('my-groups-tab').classList.add('active');
+      } else {
+        tabs[1].classList.add('active');
+        document.getElementById('all-groups-tab').classList.add('active');
+      }
+    }
+
+    // Load mentor's joined groups with stats
+    async function loadMyGroups() {
+      try {
+        const token = localStorage.getItem('mentorToken');
+        if (!token || !mentorData) return;
+
+        const mentorGroups = mentorData.groups || [];
+
+        if (mentorGroups.length === 0) {
+          document.getElementById('my-groups-container').innerHTML = `
+            <div class="empty-groups">
+              <i class="fas fa-user-friends"></i>
+              <h3>No Groups Joined Yet</h3>
+              <p>Click on "Discover Groups" to find and join study groups</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Fetch detailed stats for each group
+        const groupPromises = mentorGroups.map(async (groupName) => {
+          try {
+            const statsResponse = await fetch(`http://localhost:5000/api/groups/${groupName}/stats`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (statsResponse.ok) {
+              const statsData = await statsResponse.json();
+              return {
+                name: groupName,
+                stats: statsData.stats,
+                members: statsData.members,
+                recentActivity: statsData.recentActivity
+              };
+            }
+            return { name: groupName, stats: null };
+          } catch (error) {
+            console.error(`Error loading stats for ${groupName}:`, error);
+            return { name: groupName, stats: null };
+          }
+        });
+
+        myGroups = await Promise.all(groupPromises);
+        displayMyGroups(myGroups);
+
+      } catch (error) {
+        console.error('Error loading my groups:', error);
+        document.getElementById('my-groups-container').innerHTML = `
+          <div class="empty-groups">
+            <i class="fas fa-exclamation-circle"></i>
+            <h3>Failed to Load Your Groups</h3>
+            <p>Please try refreshing the page</p>
+          </div>
+        `;
+      }
+    }
+
+    // Display mentor's groups with enhanced features
+    function displayMyGroups(groups) {
+      const container = document.getElementById('my-groups-container');
+
+      if (groups.length === 0) {
+        container.innerHTML = `
+          <div class="empty-groups">
+            <i class="fas fa-user-friends"></i>
+            <h3>No Groups Joined Yet</h3>
+            <p>Click on "Discover Groups" to find and join study groups</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = groups.map(group => {
+        const stats = group.stats || { members: 0, onlineNow: 0, messages: 0, filesShared: 0 };
+        const userRole = group.members?.find(m => m.name === mentorData?.fullname)?.role || 'member';
+        
+        return `
+          <div class="group-card my-group-card">
+            ${userRole === 'admin' ? '<span class="group-role-badge">👑 Admin</span>' : ''}
+            
+            <div class="group-header">
+              <div style="flex: 1;">
+                <div class="group-name">
+                  <i class="fas fa-users"></i> ${group.name}
+                </div>
+              </div>
+              <span class="group-status active">Active</span>
+            </div>
+
+            <div class="group-stats">
+              <div class="stat-item">
+                <span class="stat-value">${stats.members || 0}</span>
+                <span class="stat-label">Members</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">${stats.onlineNow || 0}</span>
+                <span class="stat-label">Online</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">${stats.messages || 0}</span>
+                <span class="stat-label">Messages</span>
+              </div>
+            </div>
+
+            <div class="group-description">
+              ${stats.filesShared ? `📁 ${stats.filesShared} files shared` : 'No files shared yet'} • 
+              ${group.recentActivity?.length ? `Latest: ${new Date(group.recentActivity[0].timestamp).toLocaleDateString()}` : 'No recent activity'}
+            </div>
+
+            <div class="group-actions">
+              <button class="btn-view" onclick="viewGroupChat('${group.name}')">
+                <i class="fas fa-comments"></i> Open Chat
+              </button>
+              ${userRole === 'admin' ? `
+                <button class="btn-manage" onclick="manageGroup('${group.name}')">
+                  <i class="fas fa-cog"></i> Manage
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadStudyGroups() {
+      try {
+        const token = localStorage.getItem('mentorToken');
+        if (!token) {
+          window.location.href = '../credentials/mentor/signin.html';
+          return;
+        }
+
+        // Fetch all groups
+        const response = await fetch('http://localhost:5000/api/groups/all', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          allGroups = data.groups || [];
+          displayGroups(allGroups);
+        } else {
+          throw new Error('Failed to load groups');
+        }
+      } catch (error) {
+        console.error('Error loading groups:', error);
+        document.getElementById('groups-container').innerHTML = `
+          <div class="empty-groups">
+            <i class="fas fa-exclamation-circle"></i>
+            <h3>Failed to Load Groups</h3>
+            <p>Please try again later</p>
+          </div>
+        `;
+      }
+    }
+
+    function displayGroups(groups) {
+      const container = document.getElementById('groups-container');
+
+      if (groups.length === 0) {
+        container.innerHTML = `
+          <div class="empty-groups">
+            <i class="fas fa-users"></i>
+            <h3>No Groups Available</h3>
+            <p>Check back later for new study groups</p>
+          </div>
+        `;
+        return;
+      }
+
+      const mentorGroups = mentorData?.groups || [];
+
+      container.innerHTML = groups.map(group => {
+        const isMember = mentorGroups.includes(group.name);
+        const memberCount = group.members ? group.members.length : 0;
+        const createdDate = new Date(group.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+        return `
+          <div class="group-card">
+            <div class="group-header">
+              <div>
+                <div class="group-name">
+                  <i class="fas fa-users"></i> ${group.name}
+                </div>
+              </div>
+              <span class="group-status ${group.status}">${group.status}</span>
+            </div>
+
+            <div class="group-description">
+              ${group.description || 'No description available'}
+            </div>
+
+            <div class="group-meta">
+              <span><i class="fas fa-user-friends"></i> ${memberCount} members</span>
+              <span><i class="fas fa-tag"></i> ${group.category || 'General'}</span>
+              <span><i class="far fa-calendar"></i> ${createdDate}</span>
+            </div>
+
+            ${group.tags && group.tags.length > 0 ? `
+              <div class="group-tags">
+                ${group.tags.slice(0, 3).map(tag => `<span class="group-tag">${tag}</span>`).join('')}
+              </div>
+            ` : ''}
+
+            <div class="group-actions">
+              ${isMember ? `
+                <button class="btn-join joined" disabled>
+                  <i class="fas fa-check"></i> Joined
+                </button>
+              ` : `
+                <button class="btn-join" onclick="joinGroup('${group.name}')">
+                  <i class="fas fa-plus"></i> Join Group
+                </button>
+              `}
+              <button class="btn-view" onclick="viewGroupChat('${group.name}')">
+                <i class="fas fa-comments"></i> View Chat
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setupFilters() {
+      const searchInput = document.getElementById('search-groups');
+      const categoryFilter = document.getElementById('category-filter');
+      const statusFilter = document.getElementById('status-filter');
+
+      searchInput.addEventListener('input', filterGroups);
+      categoryFilter.addEventListener('change', filterGroups);
+      statusFilter.addEventListener('change', filterGroups);
+    }
+
+    function filterGroups() {
+      const searchTerm = document.getElementById('search-groups').value.toLowerCase();
+      const category = document.getElementById('category-filter').value;
+      const status = document.getElementById('status-filter').value;
+
+      const filtered = allGroups.filter(group => {
+        const matchesSearch = group.name.toLowerCase().includes(searchTerm) || 
+                             (group.description && group.description.toLowerCase().includes(searchTerm));
+        const matchesCategory = category === 'all' || group.category === category;
+        const matchesStatus = status === 'all' || group.status === status;
+
+        return matchesSearch && matchesCategory && matchesStatus;
+      });
+
+      displayGroups(filtered);
+    }
+
+    async function joinGroup(groupName) {
+      try {
+        const token = localStorage.getItem('mentorToken');
+        const response = await fetch(`http://localhost:5000/api/groups/${groupName}/join`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: mentorData.fullname,
+            email: mentorData.email,
+            role: 'member'
+          })
+        });
+
+        if (response.ok) {
+          alert(`✅ Successfully joined ${groupName}!`);
+          await loadStudyGroups(); // Reload discover groups
+          await loadMyGroups(); // Reload my groups
+          switchTab('my-groups'); // Switch to my groups tab
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to join group');
+        }
+      } catch (error) {
+        console.error('Error joining group:', error);
+        alert('Failed to join group. Please try again.');
+      }
+    }
+
+    function viewGroupChat(groupName) {
+      // Redirect to mentor-specific group chat page
+      const mentorToken = localStorage.getItem('mentorToken');
+      if (!mentorToken || !mentorData) {
+        alert('Please login again');
+        window.location.href = '../credentials/mentor/signin.html';
+        return;
+      }
+
+      console.log('Opening group chat for mentor:', groupName);
+      
+      // Redirect to mentor group chat page
+      window.location.href = `mentorGroupChat.html?group=${encodeURIComponent(groupName)}`;
+    }
+
+    function manageGroup(groupName) {
+      // For admin users - future enhancement for group management
+      alert(`Group management features coming soon for ${groupName}!`);
+      // This could open a modal with options to:
+      // - Remove members
+      // - Change group settings
+      // - View detailed analytics
+      // - Schedule group sessions
+    }
+
+    // Hamburger menu toggle
+    const hamburger = document.querySelector('.hamburger');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (hamburger) {
+      hamburger.addEventListener('click', () => {
+        navLinks.classList.toggle('active');
+      });
+    }
+  </script>
   
 </body>
 </html>

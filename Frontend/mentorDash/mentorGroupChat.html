@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Group Chat - Mentor Dashboard</title>
+  <script src="../js/mentor-auth-guard.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background: rgba(26, 26, 46, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      border-bottom: 2px solid rgba(255, 107, 0, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .back-btn {
+      background: rgba(255, 107, 0, 0.2);
+      border: 1px solid rgba(255, 107, 0, 0.3);
+      color: #ff6b00;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 107, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .group-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .group-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+    }
+
+    .group-details h1 {
+      font-size: 1.5rem;
+      color: #ff6b00;
+      margin-bottom: 5px;
+    }
+
+    .group-meta {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .chat-container {
+      display: flex;
+      height: calc(100vh - 90px);
+    }
+
+    .main-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(26, 26, 46, 0.5);
+    }
+
+    .messages-area {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .messages-area::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .messages-area::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .messages-area::-webkit-scrollbar-thumb {
+      background: rgba(255, 107, 0, 0.5);
+      border-radius: 4px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 70%;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.own-message {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .message.own-message .message-avatar {
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .message-sender {
+      font-weight: 600;
+      color: #8b5cf6;
+      font-size: 0.9rem;
+    }
+
+    .message.own-message .message-sender {
+      color: #ff6b00;
+    }
+
+    .message-time {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .message-bubble {
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 12px 15px;
+      border-radius: 12px;
+      word-wrap: break-word;
+      line-height: 1.5;
+    }
+
+    .message.own-message .message-bubble {
+      background: rgba(255, 107, 0, 0.15);
+      border: 1px solid rgba(255, 107, 0, 0.3);
+    }
+
+    .message-input-area {
+      padding: 20px;
+      background: rgba(26, 26, 46, 0.9);
+      border-top: 1px solid rgba(255, 107, 0, 0.2);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 107, 0, 0.3);
+      border-radius: 12px;
+      padding: 10px 15px;
+    }
+
+    .message-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      resize: none;
+      max-height: 100px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .message-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .input-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .action-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      font-size: 1.2rem;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 107, 0, 0.2);
+      color: #ff6b00;
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, #ff6b00, #ff8c00);
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 107, 0, 0.4);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .sidebar {
+      width: 320px;
+      background: rgba(26, 26, 46, 0.7);
+      border-left: 1px solid rgba(255, 107, 0, 0.2);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar h3 {
+      color: #ff6b00;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.1rem;
+    }
+
+    .members-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .member-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .member-item:hover {
+      background: rgba(255, 107, 0, 0.1);
+      border-color: rgba(255, 107, 0, 0.3);
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-weight: 600;
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .member-role {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: capitalize;
+    }
+
+    .online-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+
+    .file-upload-input {
+      display: none;
+    }
+
+    .file-preview {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      background: rgba(255, 107, 0, 0.1);
+      border-radius: 8px;
+      align-items: center;
+    }
+
+    .file-preview-info {
+      flex: 1;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .remove-file-btn {
+      background: rgba(255, 0, 0, 0.2);
+      border: none;
+      color: #ff4444;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .empty-chat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: rgba(255, 255, 255, 0.5);
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-chat i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      color: rgba(255, 107, 0, 0.3);
+    }
+
+    .empty-chat h3 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .file-message {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .file-message:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+
+    .file-icon {
+      font-size: 2rem;
+      color: #3b82f6;
+    }
+
+    .file-details {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .file-size {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+
+      .chat-header {
+        padding: 15px;
+      }
+
+      .group-info h1 {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Chat Header -->
+  <div class="chat-header">
+    <div class="header-left">
+      <button class="back-btn" onclick="goBack()">
+        <i class="fas fa-arrow-left"></i> Back
+      </button>
+      <div class="group-info">
+        <div class="group-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="group-details">
+          <h1 id="group-name">Loading...</h1>
+          <div class="group-meta">
+            <span id="member-count"><i class="fas fa-user-friends"></i> 0 members</span>
+            <span id="online-count"><i class="fas fa-circle" style="color: #10b981; font-size: 0.6rem;"></i> 0 online</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Container -->
+  <div class="chat-container">
+    <!-- Main Chat Area -->
+    <div class="main-chat">
+      <div class="messages-area" id="messages-area">
+        <div class="empty-chat">
+          <i class="fas fa-comments"></i>
+          <h3>No messages yet</h3>
+          <p>Start the conversation by sending a message below</p>
+        </div>
+      </div>
+
+      <!-- Message Input -->
+      <div class="message-input-area">
+        <div class="input-wrapper">
+          <textarea 
+            class="message-input" 
+            id="message-input" 
+            placeholder="Type your message..."
+            rows="1"
+            onkeydown="handleKeyPress(event)"
+          ></textarea>
+          
+          <div class="input-actions">
+            <button class="action-btn" onclick="triggerFileUpload()" title="Attach file">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <button class="action-btn" id="emoji-btn" title="Add emoji">
+              <i class="fas fa-smile"></i>
+            </button>
+          </div>
+          
+          <button class="send-btn" onclick="sendMessage()" id="send-btn">
+            <i class="fas fa-paper-plane"></i> Send
+          </button>
+        </div>
+        
+        <div id="file-preview" style="display: none;"></div>
+        <input type="file" id="file-upload" class="file-upload-input" onchange="handleFileSelect(event)">
+      </div>
+    </div>
+
+    <!-- Sidebar (Members) -->
+    <div class="sidebar">
+      <h3><i class="fas fa-users"></i> Group Members</h3>
+      <div class="members-list" id="members-list">
+        <div style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 20px;">
+          Loading members...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentGroup = null;
+    let mentorData = null;
+    let ws = null;
+    let selectedFile = null;
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', async function() {
+      const token = localStorage.getItem('mentorToken');
+      if (!token) {
+        alert('Please login first');
+        window.location.href = '../credentials/mentor/signin.html';
+        return;
+      }
+
+      // Get group name from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const groupName = urlParams.get('group');
+      
+      if (!groupName) {
+        alert('No group specified');
+        window.location.href = 'mentorMain.html';
+        return;
+      }
+
+      // Load mentor profile
+      await loadMentorProfile(token);
+      
+      // Load group data
+      await loadGroupData(groupName, token);
+      
+      // Initialize emoji picker
+      initializeEmojiPicker();
+      
+      // Connect to WebSocket
+      connectWebSocket(groupName);
+    });
+
+    async function loadMentorProfile(token) {
+      try {
+        const response = await fetch('http://localhost:5000/api/mentor/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          mentorData = data.profile;
+        } else {
+          throw new Error('Failed to load profile');
+        }
+      } catch (error) {
+        console.error('Error loading mentor profile:', error);
+        alert('Failed to load profile. Please try again.');
+      }
+    }
+
+    async function loadGroupData(groupName, token) {
+      try {
+        // Load group stats to get members
+        const statsResponse = await fetch(`http://localhost:5000/api/groups/${groupName}/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          currentGroup = {
+            name: groupName,
+            members: statsData.members || [],
+            stats: statsData.stats || {}
+          };
+          
+          // Update UI
+          document.getElementById('group-name').textContent = groupName;
+          document.getElementById('member-count').innerHTML = 
+            `<i class="fas fa-user-friends"></i> ${currentGroup.members.length} members`;
+          
+          displayMembers(currentGroup.members);
+          
+          // Load messages
+          await loadMessages(groupName, token);
+        } else {
+          throw new Error('Failed to load group data');
+        }
+      } catch (error) {
+        console.error('Error loading group data:', error);
+        alert('Failed to load group. Please try again.');
+      }
+    }
+
+    async function loadMessages(groupName, token) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/groups/${groupName}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const messages = data.messages || [];
+          
+          const messagesArea = document.getElementById('messages-area');
+          
+          if (messages.length === 0) {
+            messagesArea.innerHTML = `
+              <div class="empty-chat">
+                <i class="fas fa-comments"></i>
+                <h3>No messages yet</h3>
+                <p>Start the conversation by sending a message below</p>
+              </div>
+            `;
+          } else {
+            messagesArea.innerHTML = '';
+            messages.forEach(msg => displayMessage(msg));
+            scrollToBottom();
+          }
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+
+    function displayMembers(members) {
+      const membersList = document.getElementById('members-list');
+      
+      if (!members || members.length === 0) {
+        membersList.innerHTML = `
+          <div style="text-align: center; color: rgba(255, 255, 255, 0.5); padding: 20px;">
+            No members found
+          </div>
+        `;
+        return;
+      }
+
+      membersList.innerHTML = members.map(member => {
+        const initials = member.name ? member.name.substring(0, 2).toUpperCase() : '??';
+        const isOnline = member.online || false;
+        
+        return `
+          <div class="member-item">
+            <div class="member-avatar">${initials}</div>
+            <div class="member-info">
+              <div class="member-name">${member.name || 'Unknown'}</div>
+              <div class="member-role">${member.role || 'member'}</div>
+            </div>
+            ${isOnline ? '<div class="online-indicator"></div>' : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function connectWebSocket(groupName) {
+      const token = localStorage.getItem('mentorToken');
+      
+      // Connect without token in URL (server doesn't parse it)
+      ws = new WebSocket(`ws://localhost:5000`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        // Join the group chat
+        ws.send(JSON.stringify({
+          type: 'join',
+          group: groupName,
+          sender: mentorData.fullname,
+          senderEmail: mentorData.email,
+          senderRole: 'mentor'
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message:', data);
+        
+        if (data.type === 'history') {
+          // Handle chat history (not used as we load via REST API)
+          console.log('Received history:', data.messages?.length || 0, 'messages');
+        } else if (data.type === 'message') {
+          // New message received
+          displayMessage(data.message || data);
+          scrollToBottom();
+        } else if (data.type === 'userOnline' || data.type === 'userOffline') {
+          updateOnlineCount(data.onlineCount);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        // Attempt to reconnect after 3 seconds
+        setTimeout(() => connectWebSocket(groupName), 3000);
+      };
+    }
+
+    function displayMessage(message) {
+      const messagesArea = document.getElementById('messages-area');
+      
+      // Remove empty state if exists
+      const emptyChat = messagesArea.querySelector('.empty-chat');
+      if (emptyChat) {
+        messagesArea.innerHTML = '';
+      }
+
+      const isOwnMessage = message.sender === mentorData?.fullname;
+      const senderInitials = message.sender ? message.sender.substring(0, 2).toUpperCase() : '??';
+      const messageTime = new Date(message.timestamp).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isOwnMessage ? 'own-message' : ''}`;
+      
+      if (message.fileUrl) {
+        // File message
+        messageDiv.innerHTML = `
+          <div class="message-avatar">${senderInitials}</div>
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-sender">${message.sender}</span>
+              <span class="message-time">${messageTime}</span>
+            </div>
+            <div class="file-message" onclick="window.open('http://localhost:5000${message.fileUrl}', '_blank')">
+              <i class="fas fa-file file-icon"></i>
+              <div class="file-details">
+                <div class="file-name">${message.fileName || 'File'}</div>
+                <div class="file-size">${message.fileSize || 'Unknown size'}</div>
+              </div>
+              <i class="fas fa-download"></i>
+            </div>
+            ${message.text ? `<div class="message-bubble">${escapeHtml(message.text)}</div>` : ''}
+          </div>
+        `;
+      } else {
+        // Text message
+        messageDiv.innerHTML = `
+          <div class="message-avatar">${senderInitials}</div>
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-sender">${message.sender}</span>
+              <span class="message-time">${messageTime}</span>
+            </div>
+            <div class="message-bubble">${escapeHtml(message.text)}</div>
+          </div>
+        `;
+      }
+
+      messagesArea.appendChild(messageDiv);
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      
+      if (!text && !selectedFile) return;
+
+      const token = localStorage.getItem('mentorToken');
+      const formData = new FormData();
+      
+      formData.append('text', text);
+      formData.append('sender', mentorData.fullname);
+      
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/groups/${currentGroup.name}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Message sent successfully:', data);
+          
+          // Broadcast via WebSocket for real-time updates
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'chat_message',
+              group: currentGroup.name,
+              message: text,
+              sender: mentorData.fullname,
+              senderEmail: mentorData.email,
+              senderRole: 'mentor',
+              fileUrl: data.message?.fileUrl,
+              fileName: data.message?.fileName,
+              fileSize: data.message?.fileSize,
+              timestamp: new Date().toISOString()
+            }));
+          }
+          
+          // Display message locally immediately
+          displayMessage({
+            sender: mentorData.fullname,
+            text: text,
+            timestamp: new Date(),
+            fileUrl: data.message?.fileUrl,
+            fileName: data.message?.fileName,
+            fileSize: data.message?.fileSize
+          });
+          scrollToBottom();
+          
+          input.value = '';
+          clearFilePreview();
+          input.style.height = 'auto';
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to send message:', errorData);
+          alert('Failed to send message: ' + (errorData.message || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please check your connection.');
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function triggerFileUpload() {
+      document.getElementById('file-upload').click();
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+      
+      const preview = document.getElementById('file-preview');
+      preview.style.display = 'flex';
+      preview.className = 'file-preview';
+      preview.innerHTML = `
+        <i class="fas fa-file"></i>
+        <div class="file-preview-info">
+          <div>${file.name}</div>
+          <div style="font-size: 0.8rem; opacity: 0.7;">${formatFileSize(file.size)}</div>
+        </div>
+        <button class="remove-file-btn" onclick="clearFilePreview()">
+          <i class="fas fa-times"></i> Remove
+        </button>
+      `;
+    }
+
+    function clearFilePreview() {
+      selectedFile = null;
+      document.getElementById('file-preview').style.display = 'none';
+      document.getElementById('file-upload').value = '';
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function initializeEmojiPicker() {
+      const button = document.getElementById('emoji-btn');
+      const picker = new EmojiButton({
+        theme: 'dark',
+        position: 'top-end'
+      });
+
+      button.addEventListener('click', () => {
+        picker.togglePicker(button);
+      });
+
+      picker.on('emoji', emoji => {
+        const input = document.getElementById('message-input');
+        input.value += emoji;
+        input.focus();
+      });
+    }
+
+    function updateOnlineCount(count) {
+      document.getElementById('online-count').innerHTML = 
+        `<i class="fas fa-circle" style="color: #10b981; font-size: 0.6rem;"></i> ${count} online`;
+    }
+
+    function scrollToBottom() {
+      const messagesArea = document.getElementById('messages-area');
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function goBack() {
+      window.location.href = 'mentorMain.html';
+    }
+
+    // Auto-resize textarea
+    document.getElementById('message-input').addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (ws) {
+        ws.close();
+      }
+    });
+  </script>
+</body>
+</html>

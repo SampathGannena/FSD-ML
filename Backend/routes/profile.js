@@ -10,7 +10,11 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
     // Add any additional fields you want to send
     res.json({
+      _id: user._id,
+      userId: user._id,
+      fullname: user.fullname,
       username: user.fullname,
+      name: user.fullname,
       email: user.email,
       avatar: user.avatar || 'https://i.pravatar.cc/120',
       streak: user.streak || 0,

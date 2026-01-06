@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   bio: { type: String },
   streak: { type: Number, default: 0 },
   lastActive: { type: Date },
+  lastLogout: { type: Date }, // Track when user last logged out
   groups: [String],
   badges: [String] 
   // groups: [{

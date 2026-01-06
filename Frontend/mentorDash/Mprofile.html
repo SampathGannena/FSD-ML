@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mentor Profile</title>
+  <script src="../js/notifications.js"></script>
+  <script src="../js/mentor-auth-guard.js"></script>
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -49,48 +51,199 @@
     .btn.bg-orange:hover {
       background-color: #e66100;
     }
+    .loading {
+      text-align: center;
+      padding: 2rem;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 111, 0, 0.3);
+      border-top: 4px solid #ff6f00;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error-message {
+      color: #ff4444;
+      text-align: center;
+      padding: 1rem;
+    }
+    .navbar {
+      background-color: #1e1e1e;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .navbar .logo img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+    .navbar .logo h1 {
+      color: #ff6f00;
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 2rem;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-links a {
+      color: #fff;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .nav-links a:hover {
+      color: #ff6f00;
+    }
   </style>
 </head>
 <body>
 
+<nav class="navbar">
+  <div class="logo">
+    <img src="logo.jpg" alt="StudyFinder">
+    <h1>StudyFinder</h1>
+  </div>
+  <ul class="nav-links">
+    <li><a href="mentorMain.html">Home</a></li>
+    <li><a href="mentorgrops.html">Mentees</a></li>
+    <li><a href="Mprofile.html" class="active">Profile</a></li>
+    <li><a href="#" onclick="logout()">Logout</a></li>
+  </ul>
+</nav>
+
 <div class="container mt-5">
-  <div class="profile-card text-center">
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading profile...</p>
+  </div>
+  
+  <div id="error" class="error-message" style="display: none;"></div>
+  
+  <div id="profile-content" class="profile-card text-center" style="display: none;">
     <img src="https://i.pravatar.cc/120?img=32" class="rounded-img mb-3" alt="Mentor Avatar" />
-    <h3>prof. Kavya Reddy</h3>
-    <p class="text-muted">Mentor | Data Science & AI | 10+ Years Experience</p>
+    <h3 id="mentor-name">Loading...</h3>
+    <p class="text-muted" id="mentor-info">Mentor | Loading...</p>
 
     <div class="row text-center mt-4">
       <div class="col-md-4">
         <h5>Mentees Guided</h5>
-        <p class="fs-4">124</p>
+        <p class="fs-4" id="mentees-count">0</p>
       </div>
       <div class="col-md-4">
-        <h5>Sessions Conducted</h5>
-        <p class="fs-4">89 🧠</p>
+        <h5>Sessions Completed</h5>
+        <p class="fs-4" id="sessions-count">0 🧠</p>
       </div>
       <div class="col-md-4">
-        <h5>Workshops</h5>
-        <p class="fs-4">15 🎓</p>
+        <h5>Pending Requests</h5>
+        <p class="fs-4" id="pending-count">0 📋</p>
       </div>
     </div>
 
     <hr class="my-4 border-orange" />
 
     <h5 class="mb-3">Groups Mentoring</h5>
-    <div class="d-flex flex-wrap justify-content-center gap-2">
-      <span class="badge badge-orange px-3 py-2">AI & ML Explorers</span>
-      <span class="badge badge-orange px-3 py-2">Advanced Python Circle</span>
-      <span class="badge badge-orange px-3 py-2">Research & Thesis Club</span>
-      <span class="badge badge-orange px-3 py-2">Women in Tech</span>
-      <span class="badge badge-orange px-3 py-2">Data Analytics Gurukul</span>
+    <div id="groups-list" class="d-flex flex-wrap justify-content-center gap-2">
+      <span class="badge badge-orange px-3 py-2">No groups yet</span>
     </div>
 
     <div class="mt-4">
-      <a href="#" class="btn bg-orange text-dark me-2">Edit Profile</a>
-      <a href="#" class="btn btn-outline-light">Schedule a Session</a>
+      <a href="#" class="btn bg-orange text-dark me-2" onclick="editProfile()">Edit Profile</a>
+      <a href="mentorSessionRequests.html" class="btn btn-outline-light">View Session Requests</a>
     </div>
   </div>
 </div>
+
+<script>
+  async function loadProfile() {
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const content = document.getElementById('profile-content');
+    
+    try {
+      const token = localStorage.getItem('mentorToken');
+      
+      if (!token) {
+        window.location.href = '../mentor/signin.html';
+        return;
+      }
+      
+      const response = await fetch('http://localhost:5000/api/mentor/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('mentorToken');
+          window.location.href = '../mentor/signin.html';
+          return;
+        }
+        throw new Error('Failed to load profile');
+      }
+      
+      const data = await response.json();
+      
+      // Update UI with profile data
+      document.getElementById('mentor-name').textContent = `Prof. ${data.profile.fullname}`;
+      document.getElementById('mentor-info').textContent = `Mentor | Domain: ${data.profile.domainId} | ${data.profile.email}`;
+      
+      // Update stats
+      document.getElementById('mentees-count').textContent = data.stats.menteesGuided;
+      document.getElementById('sessions-count').textContent = `${data.stats.sessionsCompleted} 🧠`;
+      document.getElementById('pending-count').textContent = `${data.stats.pendingRequests} 📋`;
+      
+      // Update groups
+      const groupsList = document.getElementById('groups-list');
+      if (data.groups && data.groups.length > 0) {
+        groupsList.innerHTML = data.groups.map(group => 
+          `<span class="badge badge-orange px-3 py-2">${group}</span>`
+        ).join('');
+      } else {
+        groupsList.innerHTML = '<span class="badge badge-orange px-3 py-2">No groups yet</span>';
+      }
+      
+      // Show content
+      loading.style.display = 'none';
+      content.style.display = 'block';
+      
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      loading.style.display = 'none';
+      error.style.display = 'block';
+      error.textContent = 'Failed to load profile. Please try again.';
+    }
+  }
+  
+  function editProfile() {
+    alert('Edit profile feature coming soon!');
+  }
+  
+  function logout() {
+    localStorage.removeItem('mentorToken');
+    window.location.href = '../mentor/signin.html';
+  }
+  
+  // Load profile on page load
+  document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
 
 </body>
 </html>

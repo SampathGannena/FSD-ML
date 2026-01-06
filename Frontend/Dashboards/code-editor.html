@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaborative Code Editor - StudySync</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="../js/notifications.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    /* Header */
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .editor-title {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .editor-title i {
+      font-size: 24px;
+      color: #00d4ff;
+    }
+
+    .editor-title h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .group-badge {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .action-btn.save {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.save:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn.run {
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      color: #fff;
+    }
+
+    .action-btn.run:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0, 184, 148, 0.4);
+    }
+
+    .action-btn.share {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+    }
+
+    .action-btn.share:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Main Layout */
+    .editor-container {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background: rgba(0, 0, 0, 0.3);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .file-explorer {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .explorer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .explorer-header span {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .explorer-header button {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .explorer-header button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .file-list {
+      padding: 10px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 5px;
+    }
+
+    .file-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .file-item.active {
+      background: rgba(102, 126, 234, 0.3);
+      border-left: 3px solid #667eea;
+    }
+
+    .file-icon {
+      font-size: 14px;
+    }
+
+    .file-icon.js { color: #f7df1e; }
+    .file-icon.css { color: #264de4; }
+    .file-icon.html { color: #e34c26; }
+    .file-icon.py { color: #3776ab; }
+    .file-icon.json { color: #00d4ff; }
+
+    .file-item span {
+      font-size: 13px;
+    }
+
+    /* Collaborators Section */
+    .collaborators-section {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 15px;
+    }
+
+    .collaborators-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .collaborators-header span:first-child {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .online-count {
+      font-size: 11px;
+      color: #00b894;
+      background: rgba(0, 184, 148, 0.2);
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+
+    .collaborator-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .collaborator-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .collaborator-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      position: relative;
+    }
+
+    .collaborator-avatar::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 10px;
+      height: 10px;
+      background: #00b894;
+      border-radius: 50%;
+      border: 2px solid #1a1a2e;
+    }
+
+    .collaborator-info {
+      flex: 1;
+    }
+
+    .collaborator-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .collaborator-cursor {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Main Editor Area */
+    .main-editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Tabs */
+    .editor-tabs {
+      display: flex;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      overflow-x: auto;
+    }
+
+    .editor-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .editor-tab:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .editor-tab.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .editor-tab .close-tab {
+      margin-left: 10px;
+      opacity: 0.5;
+      font-size: 16px;
+    }
+
+    .editor-tab .close-tab:hover {
+      opacity: 1;
+      color: #ff6b6b;
+    }
+
+    /* Toolbar */
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .language-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .language-selector label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .language-selector select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .editor-options {
+      display: flex;
+      gap: 5px;
+    }
+
+    .option-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 6px 12px;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .option-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .option-btn.active {
+      background: rgba(102, 126, 234, 0.3);
+      color: #667eea;
+    }
+
+    /* Code Editor */
+    .code-wrapper {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .line-numbers {
+      width: 50px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px 10px;
+      text-align: right;
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.4);
+      overflow: hidden;
+      user-select: none;
+      white-space: pre-line;
+    }
+
+    .code-textarea {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.2);
+      border: none;
+      padding: 15px;
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #fff;
+      resize: none;
+      outline: none;
+      white-space: pre;
+      overflow: auto;
+    }
+
+    .code-textarea::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Output Panel */
+    .output-panel {
+      width: 350px;
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .output-tabs {
+      display: flex;
+      gap: 5px;
+    }
+
+    .output-tab {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 8px 15px;
+      font-size: 12px;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .output-tab:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .output-tab.active {
+      background: rgba(102, 126, 234, 0.3);
+      color: #fff;
+    }
+
+    .output-content {
+      flex: 1;
+      padding: 15px;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .output-content.success {
+      color: #00b894;
+    }
+
+    .output-content.error {
+      color: #ff6b6b;
+    }
+
+    .output-placeholder {
+      color: rgba(255, 255, 255, 0.4);
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .output-placeholder i {
+      font-size: 40px;
+      margin-bottom: 15px;
+      display: block;
+    }
+
+    /* Input Panel */
+    .input-panel {
+      display: none;
+      flex-direction: column;
+      padding: 15px;
+      height: 100%;
+    }
+
+    .input-panel.active {
+      display: flex;
+    }
+
+    .input-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6c5ce7;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-textarea {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      padding: 12px;
+      resize: none;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .input-textarea:focus {
+      border-color: #6c5ce7;
+      box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
+    }
+
+    .input-textarea::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Interactive Input (for runtime prompts) */
+    .interactive-input-container {
+      padding: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .interactive-prompt {
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      color: #ffd700;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+    }
+
+    .interactive-input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .interactive-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid #6c5ce7;
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .interactive-input:focus {
+      border-color: #a29bfe;
+      box-shadow: 0 0 10px rgba(108, 92, 231, 0.3);
+    }
+
+    .interactive-submit-btn {
+      background: linear-gradient(135deg, #00b894, #00cec9);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .interactive-submit-btn:hover {
+      transform: scale(1.05);
+    }
+
+    /* Chat Panel */
+    .chat-panel {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .chat-panel.active {
+      display: flex;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+
+    .chat-message {
+      margin-bottom: 15px;
+    }
+
+    .chat-message-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .chat-message-sender {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .chat-message-time {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .chat-message-text {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .chat-input-container {
+      display: flex;
+      gap: 10px;
+      padding: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 10px 15px;
+      border-radius: 25px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+    }
+
+    .chat-send-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .chat-send-btn:hover {
+      transform: scale(1.1);
+    }
+
+    /* Footer */
+    .editor-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .footer-left, .footer-right {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sync-status.synced {
+      color: #00b894;
+    }
+
+    .sync-status.syncing {
+      color: #f39c12;
+    }
+
+    /* New File Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      padding: 30px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 400px;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-content h3 i {
+      color: #667eea;
+    }
+
+    .modal-content input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      color: #fff;
+      outline: none;
+      margin-bottom: 20px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn.cancel {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .modal-btn.confirm {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      color: #fff;
+    }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+    }
+
+    .notification.success {
+      background: linear-gradient(135deg, #00b894, #00cec9);
+    }
+
+    .notification.error {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+    }
+
+    .notification.info {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Loading State */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(26, 26, 46, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Connecting to code session...</div>
+  </div>
+
+  <!-- Header -->
+  <header class="editor-header">
+    <div class="editor-title">
+      <button class="back-btn" onclick="goBack()">
+        <i class="fas fa-arrow-left"></i> Back
+      </button>
+      <i class="fas fa-code"></i>
+      <h1>Collaborative Code Editor</h1>
+      <span class="group-badge" id="groupName">Loading...</span>
+    </div>
+    <div class="header-actions">
+      <button class="action-btn save" onclick="saveCode()">
+        <i class="fas fa-save"></i> Save
+      </button>
+      <button class="action-btn run" onclick="runCode()">
+        <i class="fas fa-play"></i> Run
+      </button>
+      <button class="action-btn share" onclick="shareCode()">
+        <i class="fas fa-share"></i> Share
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="editor-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="file-explorer">
+        <div class="explorer-header">
+          <span>Files</span>
+          <button onclick="createNewFile()" title="New File">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+        <div class="file-list" id="fileList">
+          <div class="file-item active" data-filename="main.js" data-lang="javascript">
+            <i class="fas fa-file-code file-icon js"></i>
+            <span>main.js</span>
+          </div>
+          <div class="file-item" data-filename="styles.css" data-lang="css">
+            <i class="fas fa-file-code file-icon css"></i>
+            <span>styles.css</span>
+          </div>
+          <div class="file-item" data-filename="index.html" data-lang="html">
+            <i class="fas fa-file-code file-icon html"></i>
+            <span>index.html</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="collaborators-section">
+        <div class="collaborators-header">
+          <span>Collaborators</span>
+          <span class="online-count" id="onlineCount">1 online</span>
+        </div>
+        <div class="collaborator-list" id="collaboratorList">
+          <!-- Collaborators will be added here -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Editor -->
+    <main class="main-editor">
+      <div class="editor-tabs" id="editorTabs">
+        <div class="editor-tab active" data-filename="main.js">
+          <i class="fas fa-file-code"></i>
+          <span>main.js</span>
+          <span class="close-tab" onclick="closeTab(event, 'main.js')">×</span>
+        </div>
+      </div>
+
+      <div class="editor-toolbar">
+        <div class="language-selector">
+          <label>Language:</label>
+          <select id="languageSelect" onchange="changeLanguage(this.value)">
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="cpp">C++</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="json">JSON</option>
+            <option value="sql">SQL</option>
+          </select>
+        </div>
+
+        <div class="editor-options">
+          <button class="option-btn" onclick="toggleWordWrap()" id="wordWrapBtn">
+            <i class="fas fa-text-width"></i> Wrap
+          </button>
+          <button class="option-btn" onclick="formatCode()">
+            <i class="fas fa-indent"></i> Format
+          </button>
+          <button class="option-btn active" onclick="toggleLiveShare()" id="liveShareBtn">
+            <i class="fas fa-users"></i> Live Share
+          </button>
+        </div>
+      </div>
+
+      <div class="code-wrapper">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea class="code-textarea" id="codeTextarea" 
+          placeholder="// Start coding here...
+// Your changes will be synced with your group members in real-time."
+          spellcheck="false"></textarea>
+      </div>
+    </main>
+
+    <!-- Output Panel -->
+    <aside class="output-panel">
+      <div class="output-header">
+        <div class="output-tabs">
+          <button class="output-tab" onclick="switchOutputTab('input')">Input</button>
+          <button class="output-tab active" onclick="switchOutputTab('output')">Output</button>
+          <button class="output-tab" onclick="switchOutputTab('chat')">Chat</button>
+        </div>
+        <button class="option-btn" onclick="clearOutput()">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="input-panel" id="inputPanel">
+        <div class="input-label">
+          <i class="fas fa-keyboard"></i> Program Input
+          <span style="font-size: 10px; color: #888;">(Enter each input on a new line)</span>
+        </div>
+        <textarea class="input-textarea" id="programInput" 
+          placeholder="Enter input values here (one per line)...
+Example:
+John
+25
+Hello World"></textarea>
+      </div>
+
+      <div class="output-content" id="outputContent">
+        <div class="output-placeholder">
+          <i class="fas fa-terminal"></i>
+          Click "Run" to execute your code.<br>
+          Output will appear here.
+        </div>
+      </div>
+
+      <!-- Interactive Input Container (shown when program needs input) -->
+      <div class="interactive-input-container" id="interactiveInputContainer" style="display: none;">
+        <div class="interactive-prompt" id="interactivePrompt"></div>
+        <div class="interactive-input-row">
+          <input type="text" class="interactive-input" id="interactiveInput" 
+            placeholder="Enter value and press Enter..."
+            onkeydown="if(event.key==='Enter') submitInteractiveInput()">
+          <button class="interactive-submit-btn" onclick="submitInteractiveInput()">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-panel" id="chatPanel">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-container">
+          <input type="text" class="chat-input" id="chatInput" 
+            placeholder="Type a message..." 
+            onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="chat-send-btn" onclick="sendChatMessage()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Footer -->
+  <footer class="editor-footer">
+    <div class="footer-left">
+      <div class="footer-item">
+        <i class="fas fa-code-branch"></i>
+        <span>main</span>
+      </div>
+      <div class="footer-item sync-status synced" id="syncStatus">
+        <i class="fas fa-check-circle"></i>
+        <span>Synced</span>
+      </div>
+      <div class="footer-item">
+        <i class="fas fa-file-code"></i>
+        <span id="currentFileName">main.js</span>
+      </div>
+    </div>
+    <div class="footer-right">
+      <div class="footer-item">
+        <span id="cursorPosition">Ln 1, Col 1</span>
+      </div>
+      <div class="footer-item">
+        <span id="currentLanguage">JavaScript</span>
+      </div>
+      <div class="footer-item">
+        <span>UTF-8</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- New File Modal -->
+  <div class="modal-overlay" id="newFileModal">
+    <div class="modal-content">
+      <h3><i class="fas fa-file-plus"></i> Create New File</h3>
+      <input type="text" id="newFileName" placeholder="filename.js" 
+        onkeydown="if(event.key==='Enter') confirmNewFile()">
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeNewFileModal()">Cancel</button>
+        <button class="modal-btn confirm" onclick="confirmNewFile()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ Configuration ============
+    const API_BASE = 'http://localhost:5000';
+    let wsConnection = null;
+    let currentUser = null;
+    let selectedGroupName = '';
+
+    // ============ File State ============
+    let currentFile = 'main.js';
+    let currentLanguage = 'javascript';
+    let files = {
+      'main.js': {
+        content: '// Welcome to the Collaborative Code Editor!\n// Start coding with your group members.\n\nfunction hello() {\n    console.log("Hello, Study Group!");\n}\n\nhello();',
+        language: 'javascript'
+      },
+      'styles.css': {
+        content: '/* Styles for your project */\n\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n    background: #1e1e1e;\n    color: #fff;\n}',
+        language: 'css'
+      },
+      'index.html': {
+        content: '<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <title>My Project<\/title>\n    <link rel="stylesheet" href="styles.css">\n<\/head>\n<body>\n    <h1>Hello World!<\/h1>\n<\/body>\n<\/html>',
+        language: 'html'
+      }
+    };
+
+    let isLiveShareEnabled = true;
+    let wordWrapEnabled = false;
+
+    // ============ Initialization ============
+    document.addEventListener('DOMContentLoaded', () => {
+      // Get all params from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      selectedGroupName = urlParams.get('group') || 'Unknown Group';
+      
+      if (!selectedGroupName || selectedGroupName === 'Unknown Group') {
+        alert('No group specified. Redirecting to groups...');
+        window.location.href = 'groups.html';
+        return;
+      }
+      
+      document.getElementById('groupName').textContent = selectedGroupName;
+
+      // Get user info from URL params (passed from groups.html) or fallback to localStorage
+      const userName = urlParams.get('userName') || localStorage.getItem('userName') || 'Anonymous';
+      const userId = urlParams.get('userId') || localStorage.getItem('userId') || 'user_' + Date.now();
+      const token = urlParams.get('token') || localStorage.getItem('token') || '';
+      
+      currentUser = {
+        id: userId,
+        name: userName,
+        token: token
+      };
+      
+    //   console.log('User info:', { userName, userId, hasToken: !!token });
+
+      // Initialize editor immediately
+      initializeEditor();
+      
+      // Load saved code
+      loadSavedCode();
+      
+      // Verify membership and connect to WebSocket
+      verifyMembershipAndConnect();
+    });
+
+    function initializeEditor() {
+      const textarea = document.getElementById('codeTextarea');
+      const lineNumbers = document.getElementById('lineNumbers');
+
+      // Load initial file
+      if (files[currentFile]) {
+        textarea.value = files[currentFile].content;
+      }
+      updateLineNumbers();
+
+      // Event listeners
+      textarea.addEventListener('input', () => {
+        updateLineNumbers();
+        saveCurrentFileContent();
+        if (isLiveShareEnabled) {
+          broadcastCodeChange();
+        }
+      });
+
+      textarea.addEventListener('scroll', () => {
+        lineNumbers.scrollTop = textarea.scrollTop;
+      });
+
+      textarea.addEventListener('keydown', handleKeydown);
+      textarea.addEventListener('click', updateCursorPosition);
+      textarea.addEventListener('keyup', updateCursorPosition);
+
+      // File item click handlers
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', () => selectFile(item.dataset.filename));
+      });
+
+      // Add self to collaborators
+      addCollaborator({
+        id: currentUser.id,
+        name: currentUser.name + ' (You)',
+        color: getRandomColor()
+      });
+    }
+
+    // ============ Line Numbers ============
+    function updateLineNumbers() {
+      const textarea = document.getElementById('codeTextarea');
+      const lineNumbers = document.getElementById('lineNumbers');
+      const lines = textarea.value.split('\n').length;
+      
+      let numbersHtml = '';
+      for (let i = 1; i <= lines; i++) {
+        numbersHtml += i + '\n';
+      }
+      lineNumbers.textContent = numbersHtml;
+    }
+
+    // ============ Cursor Position ============
+    function updateCursorPosition() {
+      const textarea = document.getElementById('codeTextarea');
+      const value = textarea.value.substring(0, textarea.selectionStart);
+      const lines = value.split('\n');
+      const line = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      
+      document.getElementById('cursorPosition').textContent = `Ln ${line}, Col ${col}`;
+      
+      // Broadcast cursor position
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'cursor_update',
+          groupName: selectedGroupName,
+          cursorPosition: { line, column: col }
+        }));
+      }
+    }
+
+    // ============ Keyboard Handling ============
+    function handleKeydown(e) {
+      const textarea = e.target;
+      
+      // Tab key - insert spaces
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        updateLineNumbers();
+        saveCurrentFileContent();
+      }
+      
+      // Auto-closing brackets
+      const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
+      if (pairs[e.key]) {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+        textarea.value = textarea.value.substring(0, start) + e.key + selectedText + pairs[e.key] + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+        updateLineNumbers();
+        saveCurrentFileContent();
+      }
+    }
+
+    // ============ File Operations ============
+    function saveCurrentFileContent() {
+      const textarea = document.getElementById('codeTextarea');
+      if (files[currentFile]) {
+        files[currentFile].content = textarea.value;
+      }
+    }
+
+    function selectFile(filename) {
+      if (!files[filename]) return;
+      
+      saveCurrentFileContent();
+      currentFile = filename;
+      currentLanguage = files[filename].language;
+      
+      // Update file list UI
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.filename === filename);
+      });
+      
+      // Load file content
+      document.getElementById('codeTextarea').value = files[filename].content;
+      updateLineNumbers();
+      
+      // Update footer
+      document.getElementById('currentFileName').textContent = filename;
+      document.getElementById('currentLanguage').textContent = getLanguageDisplayName(currentLanguage);
+      document.getElementById('languageSelect').value = currentLanguage;
+      
+      // Add/update tab
+      addEditorTab(filename);
+    }
+
+    function addEditorTab(filename) {
+      const tabsContainer = document.getElementById('editorTabs');
+      let existingTab = tabsContainer.querySelector(`[data-filename="${filename}"]`);
+      
+      if (!existingTab) {
+        const tab = document.createElement('div');
+        tab.className = 'editor-tab';
+        tab.dataset.filename = filename;
+        tab.innerHTML = `
+          <i class="fas fa-file-code"></i>
+          <span>${filename}</span>
+          <span class="close-tab" onclick="closeTab(event, '${filename}')">×</span>
+        `;
+        tab.addEventListener('click', () => selectFile(filename));
+        tabsContainer.appendChild(tab);
+      }
+      
+      tabsContainer.querySelectorAll('.editor-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.filename === filename);
+      });
+    }
+
+    function closeTab(event, filename) {
+      event.stopPropagation();
+      const tabsContainer = document.getElementById('editorTabs');
+      const tab = tabsContainer.querySelector(`[data-filename="${filename}"]`);
+      
+      if (tab) {
+        tab.remove();
+        if (filename === currentFile) {
+          const remainingTab = tabsContainer.querySelector('.editor-tab');
+          if (remainingTab) {
+            selectFile(remainingTab.dataset.filename);
+          }
+        }
+      }
+    }
+
+    function createNewFile() {
+      document.getElementById('newFileModal').classList.add('active');
+      document.getElementById('newFileName').focus();
+    }
+
+    function closeNewFileModal() {
+      document.getElementById('newFileModal').classList.remove('active');
+      document.getElementById('newFileName').value = '';
+    }
+
+    function confirmNewFile() {
+      const filename = document.getElementById('newFileName').value.trim();
+      if (!filename) {
+        showNotification('Please enter a filename', 'error');
+        return;
+      }
+      
+      const ext = filename.split('.').pop().toLowerCase();
+      const langMap = {
+        js: 'javascript', py: 'python', java: 'java', cpp: 'cpp',
+        c: 'cpp', html: 'html', css: 'css', json: 'json', sql: 'sql'
+      };
+      const language = langMap[ext] || 'javascript';
+      
+      files[filename] = {
+        content: `// ${filename}\n`,
+        language: language
+      };
+      
+      // Add to file list UI
+      const fileList = document.getElementById('fileList');
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+      fileItem.dataset.filename = filename;
+      fileItem.dataset.lang = language;
+      fileItem.innerHTML = `
+        <i class="fas fa-file-code file-icon ${ext}"></i>
+        <span>${filename}</span>
+      `;
+      fileItem.addEventListener('click', () => selectFile(filename));
+      fileList.appendChild(fileItem);
+      
+      selectFile(filename);
+      closeNewFileModal();
+      showNotification(`Created ${filename}`, 'success');
+    }
+
+    // ============ Language ============
+    function getLanguageDisplayName(lang) {
+      const names = {
+        javascript: 'JavaScript', python: 'Python', java: 'Java',
+        cpp: 'C++', html: 'HTML', css: 'CSS', json: 'JSON', sql: 'SQL'
+      };
+      return names[lang] || lang;
+    }
+
+    function changeLanguage(lang) {
+      currentLanguage = lang;
+      if (files[currentFile]) {
+        files[currentFile].language = lang;
+      }
+      document.getElementById('currentLanguage').textContent = getLanguageDisplayName(lang);
+    }
+
+    // ============ Editor Options ============
+    function toggleWordWrap() {
+      wordWrapEnabled = !wordWrapEnabled;
+      const textarea = document.getElementById('codeTextarea');
+      const btn = document.getElementById('wordWrapBtn');
+      textarea.style.whiteSpace = wordWrapEnabled ? 'pre-wrap' : 'pre';
+      btn.classList.toggle('active', wordWrapEnabled);
+    }
+
+    function toggleLiveShare() {
+      isLiveShareEnabled = !isLiveShareEnabled;
+      const btn = document.getElementById('liveShareBtn');
+      btn.classList.toggle('active', isLiveShareEnabled);
+      showNotification(
+        isLiveShareEnabled ? 'Live Share enabled' : 'Live Share disabled',
+        'info'
+      );
+    }
+
+    function formatCode() {
+      const textarea = document.getElementById('codeTextarea');
+      let code = textarea.value;
+      
+      if (currentLanguage === 'json') {
+        try {
+          code = JSON.stringify(JSON.parse(code), null, 2);
+          textarea.value = code;
+          updateLineNumbers();
+          saveCurrentFileContent();
+          showNotification('Code formatted!', 'success');
+        } catch (e) {
+          showNotification('Invalid JSON: ' + e.message, 'error');
+        }
+      } else {
+        showNotification('Formatting available for JSON only', 'info');
+      }
+    }
+
+    // ============ Save & Run ============
+    function saveCode() {
+      saveCurrentFileContent();
+      
+      const syncStatus = document.getElementById('syncStatus');
+      syncStatus.classList.remove('synced');
+      syncStatus.classList.add('syncing');
+      syncStatus.innerHTML = '<i class="fas fa-sync fa-spin"></i><span>Saving...</span>';
+      
+      saveCodeToServer().then(() => {
+        syncStatus.classList.remove('syncing');
+        syncStatus.classList.add('synced');
+        syncStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Saved</span>';
+        showNotification('Code saved successfully!', 'success');
+      }).catch(() => {
+        syncStatus.classList.remove('syncing');
+        syncStatus.classList.add('synced');
+        syncStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Saved locally</span>';
+        showNotification('Saved locally', 'info');
+      });
+    }
+
+    async function saveCodeToServer() {
+      const response = await fetch(`${API_BASE}/api/code-editor/save`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          groupName: selectedGroupName,
+          files: files
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to save');
+      return response.json();
+    }
+
+    async function loadSavedCode() {
+      try {
+        const response = await fetch(`${API_BASE}/api/code-editor/load/${encodeURIComponent(selectedGroupName)}`, {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.files && !data.isDefault) {
+            files = data.files;
+            rebuildFileList();
+            selectFile(Object.keys(files)[0]);
+            showNotification('Loaded saved code', 'success');
+          }
+        }
+      } catch (err) {
+        console.log('Could not load saved code:', err);
+      }
+    }
+
+    function rebuildFileList() {
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = '';
+      
+      Object.keys(files).forEach((filename, index) => {
+        const file = files[filename];
+        const ext = filename.split('.').pop();
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item' + (index === 0 ? ' active' : '');
+        fileItem.dataset.filename = filename;
+        fileItem.dataset.lang = file.language;
+        fileItem.innerHTML = `
+          <i class="fas fa-file-code file-icon ${ext}"></i>
+          <span>${filename}</span>
+        `;
+        fileItem.addEventListener('click', () => selectFile(filename));
+        fileList.appendChild(fileItem);
+      });
+    }
+
+    function runCode() {
+      const code = document.getElementById('codeTextarea').value;
+      const outputContent = document.getElementById('outputContent');
+      const interactiveContainer = document.getElementById('interactiveInputContainer');
+      
+      // Reset state
+      interactiveContainer.style.display = 'none';
+      outputContent.className = 'output-content';
+      outputContent.innerHTML = '<div style="color: #888;"><i class="fas fa-spinner fa-spin"></i> Running...</div>';
+      
+      if (currentLanguage === 'javascript') {
+        // Run JavaScript locally in browser
+        setTimeout(() => {
+          let output = '';
+          let hasError = false;
+          
+          const originalLog = console.log;
+          const originalError = console.error;
+          const originalWarn = console.warn;
+          
+          console.log = (...args) => {
+            output += args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : a).join(' ') + '\n';
+          };
+          console.error = (...args) => {
+            output += '❌ ' + args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : a).join(' ') + '\n';
+          };
+          console.warn = (...args) => {
+            output += '⚠️ ' + args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : a).join(' ') + '\n';
+          };
+          
+          try {
+            eval(code);
+          } catch (e) {
+            output = `Error: ${e.message}`;
+            hasError = true;
+          }
+          
+          console.log = originalLog;
+          console.error = originalError;
+          console.warn = originalWarn;
+          
+          if (hasError) {
+            outputContent.classList.add('error');
+            outputContent.innerHTML = `<pre>${escapeHtml(output)}</pre>`;
+          } else if (output) {
+            outputContent.classList.add('success');
+            outputContent.innerHTML = `<pre>${escapeHtml(output)}</pre>`;
+          } else {
+            outputContent.innerHTML = '<div style="color: #888;">Code executed successfully. No output.</div>';
+          }
+        }, 100);
+      } else if (currentLanguage === 'html') {
+        // Render HTML in an iframe
+        try {
+          const htmlContent = code;
+          outputContent.innerHTML = `
+            <iframe 
+              srcdoc="${escapeHtml(htmlContent)}" 
+              style="width: 100%; height: 100%; border: none; background: white; border-radius: 8px;"
+              sandbox="allow-scripts">
+            </iframe>
+          `;
+        } catch (e) {
+          outputContent.classList.add('error');
+          outputContent.innerHTML = `<pre>Error: ${escapeHtml(e.message)}</pre>`;
+        }
+      } else if (currentLanguage === 'css') {
+        // Show CSS preview
+        outputContent.innerHTML = `
+          <div style="color: #888; text-align: center; padding: 20px;">
+            <i class="fas fa-palette" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
+            CSS code saved. Apply it to your HTML file to see the styles.
+          </div>
+        `;
+      } else if (currentLanguage === 'python') {
+        // Execute Python on backend
+        const input = document.getElementById('programInput').value;
+        executePythonCode(code, input);
+      } else {
+        // Other languages - try backend
+        const input = document.getElementById('programInput').value;
+        executeOnServer(code, currentLanguage, input);
+      }
+    }
+    
+    // Track pending inputs for interactive mode
+    let pendingInputs = [];
+    let collectedInputs = [];
+    let currentCode = '';
+    let inputPromptTexts = [];
+    
+    function executePythonCode(code, preProvidedInput = '') {
+      const outputContent = document.getElementById('outputContent');
+      currentCode = code;
+      
+      // Check if code has input() calls
+      const inputMatches = code.match(/input\s*\([^)]*\)/g) || [];
+      const inputCount = inputMatches.length;
+      
+      // Extract prompt texts from input() calls
+      inputPromptTexts = inputMatches.map(match => {
+        const promptMatch = match.match(/input\s*\(\s*["'](.*)["']\s*\)/);
+        return promptMatch ? promptMatch[1] : 'Enter input:';
+      });
+      
+      // If user already provided input in Input tab, use that
+      if (preProvidedInput.trim()) {
+        executeOnServer(code, 'python', preProvidedInput);
+        return;
+      }
+      
+      // If code needs input and none provided, start interactive mode
+      if (inputCount > 0) {
+        pendingInputs = [...inputPromptTexts];
+        collectedInputs = [];
+        
+        // Show first prompt
+        showInteractivePrompt(pendingInputs[0], 0, inputCount);
+      } else {
+        // No input needed, just run
+        executeOnServer(code, 'python', '');
+      }
+    }
+    
+    function showInteractivePrompt(promptText, currentIndex, totalInputs) {
+      const outputContent = document.getElementById('outputContent');
+      const interactiveContainer = document.getElementById('interactiveInputContainer');
+      const interactivePrompt = document.getElementById('interactivePrompt');
+      const interactiveInput = document.getElementById('interactiveInput');
+      
+      // Show output panel
+      switchOutputTab('output');
+      
+      // Show collected output so far + current prompt
+      let displayText = '';
+      for (let i = 0; i < collectedInputs.length; i++) {
+        displayText += `${inputPromptTexts[i]}${collectedInputs[i]}\n`;
+      }
+      
+      outputContent.className = 'output-content';
+      outputContent.innerHTML = `<pre style="color: #00b894;">${escapeHtml(displayText)}</pre>`;
+      outputContent.style.display = 'block';
+      
+      // Show interactive input
+      interactivePrompt.innerHTML = `<span style="color: #ffd700;">⏳ Input ${currentIndex + 1}/${totalInputs}:</span> ${escapeHtml(promptText)}`;
+      interactiveContainer.style.display = 'block';
+      interactiveInput.value = '';
+      interactiveInput.focus();
+    }
+    
+    function submitInteractiveInput() {
+      const interactiveInput = document.getElementById('interactiveInput');
+      const value = interactiveInput.value;
+      
+      collectedInputs.push(value);
+      pendingInputs.shift();
+      
+      if (pendingInputs.length > 0) {
+        // More inputs needed
+        showInteractivePrompt(pendingInputs[0], collectedInputs.length, collectedInputs.length + pendingInputs.length);
+      } else {
+        // All inputs collected, run the code
+        const interactiveContainer = document.getElementById('interactiveInputContainer');
+        interactiveContainer.style.display = 'none';
+        
+        const allInputs = collectedInputs.join('\n');
+        executeOnServer(currentCode, 'python', allInputs);
+      }
+    }
+    
+    async function executeOnServer(code, language, input = '') {
+      const outputContent = document.getElementById('outputContent');
+      const interactiveContainer = document.getElementById('interactiveInputContainer');
+      
+      // Hide interactive input
+      interactiveContainer.style.display = 'none';
+      
+      // Switch to output tab to show results
+      switchOutputTab('output');
+      
+      // Show running indicator
+      outputContent.className = 'output-content';
+      outputContent.innerHTML = '<div style="color: #888;"><i class="fas fa-spinner fa-spin"></i> Running...</div>';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/code-editor/execute`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentUser.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code, language, input })
+        });
+        
+        const data = await response.json();
+        
+        // Show input values that were used (if any)
+        let inputDisplay = '';
+        if (input && collectedInputs.length > 0) {
+          for (let i = 0; i < collectedInputs.length; i++) {
+            inputDisplay += `<span style="color: #ffd700;">${escapeHtml(inputPromptTexts[i] || 'Input:')}</span><span style="color: #00d4ff;">${escapeHtml(collectedInputs[i])}</span>\n`;
+          }
+        }
+        
+        if (data.error) {
+          outputContent.classList.add('error');
+          outputContent.innerHTML = `<pre>${inputDisplay}<span style="color: #ff6b6b;">${escapeHtml(data.output || data.message || 'Error executing code')}</span></pre>`;
+        } else {
+          outputContent.classList.add('success');
+          outputContent.innerHTML = `<pre>${inputDisplay}<span style="color: #00b894;">${escapeHtml(data.output || data.message || 'Code executed successfully.')}</span></pre>`;
+        }
+        
+        // Reset collected inputs
+        collectedInputs = [];
+        inputPromptTexts = [];
+        
+      } catch (err) {
+        outputContent.classList.add('error');
+        outputContent.innerHTML = `<pre>Error: Could not connect to server.\n${escapeHtml(err.message)}</pre>`;
+      }
+    }
+
+    function clearOutput() {
+      const outputContent = document.getElementById('outputContent');
+      outputContent.className = 'output-content';
+      outputContent.innerHTML = `
+        <div class="output-placeholder">
+          <i class="fas fa-terminal"></i>
+          Click "Run" to execute your code.<br>
+          Output will appear here.
+        </div>
+      `;
+    }
+
+    function switchOutputTab(tab) {
+      document.querySelectorAll('.output-tab').forEach(t => {
+        t.classList.toggle('active', t.textContent.toLowerCase() === tab);
+      });
+      
+      const outputContent = document.getElementById('outputContent');
+      const chatPanel = document.getElementById('chatPanel');
+      const inputPanel = document.getElementById('inputPanel');
+      
+      // Hide all panels first
+      outputContent.style.display = 'none';
+      chatPanel.classList.remove('active');
+      inputPanel.classList.remove('active');
+      
+      if (tab === 'chat') {
+        chatPanel.classList.add('active');
+      } else if (tab === 'input') {
+        inputPanel.classList.add('active');
+      } else {
+        outputContent.style.display = 'block';
+      }
+    }
+
+    // ============ Share ============
+    function shareCode() {
+      const code = document.getElementById('codeTextarea').value;
+      const shareMessage = `📝 Code shared from ${selectedGroupName}:\n\`\`\`${currentLanguage}\n${code}\n\`\`\``;
+      
+      navigator.clipboard.writeText(shareMessage).then(() => {
+        showNotification('Code copied to clipboard!', 'success');
+      }).catch(() => {
+        showNotification('Could not copy to clipboard', 'error');
+      });
+    }
+
+    // ============ WebSocket ============
+    let wsReconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    // First verify membership before connecting
+    async function verifyMembershipAndConnect() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const loadingText = loadingOverlay.querySelector('.loading-text');
+      
+      loadingText.textContent = 'Verifying group membership...';
+      
+      // Use token from currentUser (already got from URL params)
+      const token = currentUser.token;
+      
+      if (!token) {
+        console.log('No token available, connecting directly...');
+        connectWebSocket();
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/code-editor/verify-membership/${encodeURIComponent(selectedGroupName)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.isMember) {
+          // Not a member - show error
+          loadingOverlay.classList.add('hidden');
+          showAccessDeniedModal(data.error || 'You are not a member of this group');
+          return;
+        }
+        
+        // User is a member - proceed to connect
+        // console.log('✅ Membership verified:', data);
+        
+        if (data.hasActiveSession) {
+          loadingText.textContent = `Joining existing session (${data.activeCollaborators} collaborators)...`;
+        } else {
+          loadingText.textContent = 'Creating new code session...';
+        }
+        
+        // Connect to WebSocket
+        connectWebSocket();
+        
+      } catch (err) {
+        console.error('Membership verification error:', err);
+        // If server is down, allow offline mode
+        showNotification('Server unavailable. Working offline.', 'info');
+        connectWebSocket();
+      }
+    }
+
+    function showAccessDeniedModal(message) {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'access-denied-modal';
+      modal.innerHTML = `
+        <div class="access-denied-content">
+          <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f44336; margin-bottom: 20px;"></i>
+          <h2 style="color: #f44336; margin-bottom: 15px;">Access Denied</h2>
+          <p style="color: #bbb; margin-bottom: 25px;">${escapeHtml(message)}</p>
+          <button class="access-denied-btn" onclick="window.location.href='groups.html'">
+            <i class="fas fa-arrow-left"></i> Back to Groups
+          </button>
+        </div>
+      `;
+      
+      // Add styles
+      const style = document.createElement('style');
+      style.textContent = `
+        .access-denied-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+        }
+        .access-denied-content {
+          background: #2d2d2d;
+          padding: 40px;
+          border-radius: 12px;
+          text-align: center;
+          max-width: 400px;
+        }
+        .access-denied-btn {
+          background: #4a90d9;
+          color: white;
+          border: none;
+          padding: 12px 30px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 16px;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .access-denied-btn:hover {
+          background: #357abd;
+        }
+      `;
+      document.head.appendChild(style);
+      document.body.appendChild(modal);
+    }
+
+    function connectWebSocket() {
+      try {
+        // Hide loading overlay - don't wait for WebSocket
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        
+        wsConnection = new WebSocket('ws://localhost:5000');
+        
+        wsConnection.onopen = () => {
+          console.log('✅ Connected to WebSocket');
+          wsReconnectAttempts = 0;
+          
+          wsConnection.send(JSON.stringify({
+            type: 'join_code_session',
+            groupName: selectedGroupName,
+            userId: currentUser.id,
+            userName: currentUser.name
+          }));
+          
+          showNotification('Connected to collaboration server', 'success');
+        };
+        
+        wsConnection.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+          } catch (err) {
+            console.error('Error parsing message:', err);
+          }
+        };
+        
+        wsConnection.onerror = (err) => {
+          console.log('WebSocket error:', err);
+        };
+        
+        wsConnection.onclose = () => {
+          console.log('WebSocket closed');
+          wsReconnectAttempts++;
+          
+          if (wsReconnectAttempts <= maxReconnectAttempts) {
+            console.log(`Reconnecting... (attempt ${wsReconnectAttempts}/${maxReconnectAttempts})`);
+            setTimeout(connectWebSocket, 3000);
+          } else {
+            showNotification('Could not connect to server. Working offline.', 'info');
+          }
+        };
+      } catch (err) {
+        console.log('Could not connect to WebSocket:', err);
+        document.getElementById('loadingOverlay').classList.add('hidden');
+      }
+    }
+
+    function handleWebSocketMessage(data) {
+      switch (data.type) {
+        case 'error':
+          // Handle access errors from server
+          console.error('Server error:', data.message);
+          if (data.errorType === 'NOT_A_MEMBER' || data.errorType === 'GROUP_NOT_FOUND') {
+            showAccessDeniedModal(data.message);
+            if (wsConnection) {
+              wsConnection.close();
+            }
+          } else {
+            showNotification(data.message, 'error');
+          }
+          break;
+        case 'code_session_joined':
+          // Show appropriate notification
+          if (data.isNewSession) {
+            showNotification('New code session created!', 'success');
+          } else {
+            showNotification(`Joined existing session with ${data.collaborators.length} collaborator(s)`, 'success');
+          }
+          
+          // Sync code from session
+          if (data.code) {
+            document.getElementById('codeTextarea').value = data.code;
+            updateLineNumbers();
+          }
+          
+          // Update language if session has one set
+          if (data.language && data.language !== currentLanguage) {
+            currentLanguage = data.language;
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+              btn.classList.toggle('active', btn.dataset.lang === currentLanguage);
+            });
+          }
+          
+          // Add other collaborators
+          if (data.collaborators) {
+            data.collaborators.forEach(c => {
+              if (c.id !== currentUser.id) {
+                addCollaborator(c);
+              }
+            });
+          }
+          
+          console.log(`✅ Joined session for ${data.groupName}. New: ${data.isNewSession}, Collaborators: ${data.collaborators.length}`);
+          break;
+          
+        case 'collaborator_joined':
+          addCollaborator(data.collaborator);
+          showNotification(`${data.collaborator.name} joined`, 'info');
+          break;
+          
+        case 'collaborator_left':
+          removeCollaborator(data.collaboratorId);
+          showNotification(`${data.collaboratorName} left`, 'info');
+          break;
+          
+        case 'code_updated':
+          if (data.userId !== currentUser.id) {
+            const textarea = document.getElementById('codeTextarea');
+            const cursorPos = textarea.selectionStart;
+            textarea.value = data.code;
+            textarea.selectionStart = textarea.selectionEnd = cursorPos;
+            updateLineNumbers();
+            
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.innerHTML = `<i class="fas fa-sync"></i><span>Updated by ${data.userName}</span>`;
+            setTimeout(() => {
+              syncStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Synced</span>';
+            }, 2000);
+          }
+          break;
+          
+        case 'cursor_updated':
+          if (data.userId !== currentUser.id) {
+            updateRemoteCursor(data.userId, data.cursorPosition);
+          }
+          break;
+          
+        case 'editor_chat':
+          if (data.senderName !== currentUser.name) {
+            addChatMessage(data.senderName, data.message, data.timestamp);
+          }
+          break;
+      }
+    }
+
+    function broadcastCodeChange() {
+      if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) return;
+      
+      const textarea = document.getElementById('codeTextarea');
+      
+      wsConnection.send(JSON.stringify({
+        type: 'code_update',
+        groupName: selectedGroupName,
+        code: textarea.value
+      }));
+      
+      const syncStatus = document.getElementById('syncStatus');
+      syncStatus.classList.remove('synced');
+      syncStatus.classList.add('syncing');
+      syncStatus.innerHTML = '<i class="fas fa-sync fa-spin"></i><span>Syncing...</span>';
+      
+      setTimeout(() => {
+        syncStatus.classList.remove('syncing');
+        syncStatus.classList.add('synced');
+        syncStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Synced</span>';
+      }, 500);
+    }
+
+    // ============ Collaborators ============
+    function addCollaborator(user) {
+      const list = document.getElementById('collaboratorList');
+      if (list.querySelector(`[data-user-id="${user.id}"]`)) return;
+      
+      const color = user.color || getRandomColor();
+      const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      
+      const item = document.createElement('div');
+      item.className = 'collaborator-item';
+      item.dataset.userId = user.id;
+      item.innerHTML = `
+        <div class="collaborator-avatar" style="background: ${color};">
+          <span>${initials}</span>
+        </div>
+        <div class="collaborator-info">
+          <div class="collaborator-name">${user.name}</div>
+          <div class="collaborator-cursor">Connected</div>
+        </div>
+      `;
+      list.appendChild(item);
+      
+      updateCollaboratorCount();
+    }
+
+    function removeCollaborator(userId) {
+      const item = document.querySelector(`[data-user-id="${userId}"]`);
+      if (item) item.remove();
+      updateCollaboratorCount();
+    }
+
+    function updateCollaboratorCount() {
+      const count = document.querySelectorAll('.collaborator-item').length;
+      document.getElementById('onlineCount').textContent = `${count} online`;
+    }
+
+    function updateRemoteCursor(userId, position) {
+      const item = document.querySelector(`[data-user-id="${userId}"]`);
+      if (item) {
+        const cursorEl = item.querySelector('.collaborator-cursor');
+        if (cursorEl && position) {
+          cursorEl.textContent = `Line ${position.line}, Col ${position.column}`;
+        }
+      }
+    }
+
+    // ============ Chat ============
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message) return;
+      
+      addChatMessage(currentUser.name, message, new Date());
+      
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'editor_chat',
+          groupName: selectedGroupName,
+          message: message,
+          senderName: currentUser.name,
+          timestamp: new Date()
+        }));
+      }
+      
+      input.value = '';
+    }
+
+    function addChatMessage(sender, message, timestamp) {
+      const container = document.getElementById('chatMessages');
+      const time = new Date(timestamp).toLocaleTimeString();
+      
+      const msgEl = document.createElement('div');
+      msgEl.className = 'chat-message';
+      msgEl.innerHTML = `
+        <div class="chat-message-header">
+          <span class="chat-message-sender" style="color: ${getRandomColor()}">${sender}</span>
+          <span class="chat-message-time">${time}</span>
+        </div>
+        <div class="chat-message-text">${escapeHtml(message)}</div>
+      `;
+      container.appendChild(msgEl);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // ============ Utilities ============
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getRandomColor() {
+      const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#fd79a8', '#a29bfe'];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.remove(), 3000);
+    }
+
+    function goBack() {
+      // Send leave message
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'leave_code_session',
+          groupName: selectedGroupName
+        }));
+        wsConnection.close();
+      }
+      
+      // Go back to groups page
+      window.location.href = 'groups.html';
+    }
+
+    // Handle page unload
+    window.addEventListener('beforeunload', () => {
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'leave_code_session',
+          groupName: selectedGroupName
+        }));
+      }
+    });
+  </script>
+</body>
+</html>

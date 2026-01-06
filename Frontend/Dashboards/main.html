@@ -12,6 +12,8 @@
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
   />
+  <script src="../js/notifications.js"></script>
+  <script src="../js/auth-guard.js"></script>
 </head>
 <body>
 
@@ -25,6 +27,12 @@
             <li><a href="#features">Features</a></li>
             <li><a href="#about">About Us</a></li>
             <li><a href="../Dashboards/profile.html">Profile</a></li>
+            <li>
+                <a href="#" class="notification-bell" onclick="toggleNotifications()" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </a>
+            </li>
             <!-- <li><a href="#cta">Contact Us</a></li> -->
         </ul>
         <div class="hamburger">
@@ -34,12 +42,27 @@
         </div>
     </nav>
 
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notification-panel" style="display: none;">
+        <div class="notification-header">
+            <h3><i class="fas fa-bell"></i> Notifications</h3>
+            <button class="close-btn" onclick="toggleNotifications()">&times;</button>
+        </div>
+        <div class="notification-content" id="notification-content">
+            <div class="no-notifications">
+                <i class="fas fa-bell-slash"></i>
+                <p>No new notifications</p>
+            </div>
+        </div>
+    </div>
+
   <section class="hero">
     <div class="hero-content">
       <h1>Connect. Collaborate. Conquer.</h1>
       <p>Use AI to find your perfect study group based on your learning style, subjects, and goals.</p>
       <a href="../ml_model/input.html" class="btn-primary">Find Your Group</a>
       <a href="../Dashboards/groups.html" class="btn-primary">Enrolled Groups</a>
+      <a href="../Dashboards/progress.html" class="btn-primary">📈 My Progress</a>
     </div>
     <img src="hii.jpg" alt="Study Illustration" class="hero-img" />
   </section>
@@ -58,6 +81,102 @@
       <div class="card">
         <h3>⏰ Time-based Suggestions</h3>
         <p>Get group suggestions based on your availability and schedule.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mentor Selection Section -->
+  <section class="mentor-section" id="mentors">
+    <div class="container">
+      <h2><i class="fas fa-chalkboard-teacher"></i> Choose Your Mentor</h2>
+      <p class="section-subtitle">Connect with experienced mentors who can guide your learning journey</p>
+      
+      <div class="mentor-filters">
+        <input type="text" id="mentor-search" placeholder="Search mentors by name or specialization..." onkeyup="filterMentors()">
+        <select id="domain-filter" onchange="filterMentors()">
+          <option value="">All Domains</option>
+          <option value="web-development">Web Development</option>
+          <option value="data-science">Data Science</option>
+          <option value="machine-learning">Machine Learning</option>
+          <option value="mobile-development">Mobile Development</option>
+          <option value="cybersecurity">Cybersecurity</option>
+        </select>
+        <button class="btn-secondary" onclick="resetMentorFilters()">Reset</button>
+      </div>
+
+      <div class="mentors-grid" id="mentors-grid">
+        <!-- Mentors will be loaded here dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Collaboration & Doubts Section -->
+  <section class="collaboration-section" id="collaboration">
+    <div class="container">
+      <h2><i class="fas fa-comments"></i> Collaboration & Doubts</h2>
+      <p class="section-subtitle">Ask questions, share knowledge, and collaborate with your mentors and peers</p>
+      
+      <div class="collaboration-tabs">
+        <button class="tab-btn active" onclick="switchCollabTab('doubts')">My Doubts</button>
+        <button class="tab-btn" onclick="switchCollabTab('discussions')">Discussions</button>
+        <button class="tab-btn" onclick="switchCollabTab('progress')">My Progress</button>
+      </div>
+
+      <div class="collaboration-content">
+        <!-- My Doubts Tab -->
+        <div class="tab-content active" id="doubts-tab">
+          <div class="doubt-actions">
+            <button class="btn-primary" onclick="showAskDoubtModal()">
+              <i class="fas fa-question-circle"></i> Ask a Doubt
+            </button>
+            <select id="doubt-filter" onchange="filterDoubts()">
+              <option value="all">All Doubts</option>
+              <option value="pending">Pending</option>
+              <option value="answered">Answered</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="doubts-container" id="doubts-container">
+            <!-- Doubts will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Discussions Tab -->
+        <div class="tab-content" id="discussions-tab">
+          <div class="discussions-container" id="discussions-container">
+            <!-- Discussions will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Progress Tab -->
+        <div class="tab-content" id="progress-tab">
+          <div class="progress-overview">
+            <div class="progress-stats">
+              <div class="stat-card">
+                <h3 id="total-tasks">0</h3>
+                <p>Total Tasks</p>
+              </div>
+              <div class="stat-card">
+                <h3 id="completed-tasks">0</h3>
+                <p>Completed</p>
+              </div>
+              <div class="stat-card">
+                <h3 id="active-goals">0</h3>
+                <p>Active Goals</p>
+              </div>
+              <div class="stat-card">
+                <h3 id="mentor-sessions">0</h3>
+                <p>Sessions</p>
+              </div>
+            </div>
+            <div class="progress-details">
+              <h4>Recent Activities</h4>
+              <div class="activities-list" id="activities-list">
+                <!-- Activities will be loaded here -->
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -120,29 +239,108 @@
 
 
   </section>
-
-  <!-- <section class="testimonials" id="testimonials">
-    <h2>What Students Say</h2>
-    <div class="testimonial-boxes">
-      <div class="testimonial">
-        <p>"This platform helped me find friends who matched my study vibe!"</p>
-        <span>— Arjun, CSE</span>
+  <!-- Mentor Selection Modal -->
+  <div class="modal" id="mentorModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-user-tie"></i> Select Mentor</h3>
+        <span class="close" onclick="closeMentorModal()">&times;</span>
       </div>
-      <div class="testimonial">
-        <p>"The AI suggestions are freakishly accurate. 10/10!"</p>
-        <span>— Priya, ECE</span>
+      <div class="modal-body">
+        <div class="mentor-profile" id="selected-mentor-profile">
+          <!-- Mentor details will be shown here -->
+        </div>
+        <div class="mentor-actions">
+          <button class="btn-primary" onclick="requestMentorship()">
+            <i class="fas fa-handshake"></i> Request Mentorship
+          </button>
+          <button class="btn-secondary" onclick="scheduleMentorMeeting()">
+            <i class="fas fa-calendar"></i> Schedule Meeting
+          </button>
+        </div>
       </div>
     </div>
-  </section> -->
+  </div>
 
-  <!-- <footer>
-    <div class="social-icons">
-      <a href="https://www.linkedin.com/in/your-profile" target="_blank"><i class="fab fa-linkedin"></i></a>
-      <a href="https://github.com/your-username" target="_blank"><i class="fab fa-github"></i></a>
-      <a href="mailto:youremail@example.com"><i class="fas fa-envelope"></i></a>
+  <!-- Ask Doubt Modal -->
+  <div class="modal" id="doubtModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-question-circle"></i> Ask a Doubt</h3>
+        <span class="close" onclick="closeDoubtModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="doubt-form">
+          <div class="form-group">
+            <label>Select Mentor (Optional)</label>
+            <select id="doubt-mentor-select">
+              <option value="">Choose a mentor or ask publicly</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Subject/Category</label>
+            <select id="doubt-category" required>
+              <option value="">Select Category</option>
+              <option value="technical">Technical</option>
+              <option value="academic">Academic</option>
+              <option value="career">Career</option>
+              <option value="project">Project</option>
+              <option value="assignment">Assignment</option>
+              <option value="concept">Concept</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="doubt-title" placeholder="Brief title for your doubt" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="doubt-description" rows="4" placeholder="Describe your doubt in detail..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="doubt-priority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Attach File (Optional)</label>
+            <input type="file" id="doubt-attachment" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+          </div>
+        </form>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeDoubtModal()">Cancel</button>
+          <button class="btn-primary" onclick="submitDoubt()">
+            <i class="fas fa-paper-plane"></i> Submit Doubt
+          </button>
+        </div>
+      </div>
     </div>
-    <p class="footer-text">&copy; 2025 StudyFinder. Crafted with ❤ for learners.</p>
-  </footer> -->
+  </div>
+
+  <!-- Chat Widget for Real-time Collaboration -->
+  <div class="chat-widget" id="chatWidget" style="display: none;">
+    <div class="chat-header">
+      <h4>Collaboration Chat</h4>
+      <div class="chat-controls">
+        <button onclick="minimizeChat()"><i class="fas fa-minus"></i></button>
+        <button onclick="closeChat()"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <!-- Chat messages will appear here -->
+    </div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="handleChatEnter(event)">
+      <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+ 
   <footer class="footer">
     <div class="footer-container">
       <div class="footer-about">
@@ -222,7 +420,1032 @@
         chatBody.scrollTop = chatBody.scrollHeight;
       }
     }
-  </script>  
+  </script>
+
+  <!-- Collaboration & Mentorship System Script -->
+  <script>
+    let mentors = [];
+    let doubts = [];
+    let selectedMentor = null;
+    let currentCollabTab = 'doubts';
+    let chatMessages = [];
+
+    // ==================== MENTOR SELECTION SYSTEM ====================
+
+    // Load available mentors
+    async function loadMentors() {
+      console.log('loadMentors function called');
+      
+      try {
+        const token = localStorage.getItem('token');
+        console.log('Token:', token ? 'exists' : 'missing');
+        
+        if (!token) {
+          console.error('No authentication token found. Please login first.');
+          mentors = [];
+          displayMentors(mentors);
+          return;
+        }
+        
+        const response = await fetch('http://localhost:5000/api/auth/mentors/available', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('API response status:', response.status);
+        console.log('API response ok:', response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('API response data:', data);
+          mentors = data.mentors || [];
+          console.log('Real mentors loaded from database:', mentors.length);
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+          console.error('Failed to load mentors from API:', response.status, errorData);
+          mentors = [];
+        }
+
+        displayMentors(mentors);
+        populateMentorSelects();
+
+      } catch (error) {
+        console.error('Error loading mentors:', error);
+        mentors = [];
+        displayMentors(mentors);
+        populateMentorSelects();
+      }
+    }
+
+    // Display mentors in grid
+    function displayMentors(mentorList) {
+      console.log('displayMentors called with:', mentorList);
+      
+      const grid = document.getElementById('mentors-grid');
+      console.log('Mentors grid element:', grid);
+      
+      if (!grid) {
+        console.error('Mentors grid element not found!');
+        return;
+      }
+      
+      if (mentorList.length === 0) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          grid.innerHTML = `
+            <div style="text-align: center; color: #666; grid-column: 1/-1; padding: 40px;">
+              <i class="fas fa-lock" style="font-size: 3rem; color: #ff6b00; margin-bottom: 15px;"></i>
+              <h3 style="color: #666; margin-bottom: 10px;">Authentication Required</h3>
+              <p style="color: #999;">Please log in to view available mentors.</p>
+            </div>
+          `;
+        } else {
+          grid.innerHTML = `
+            <div style="text-align: center; color: #666; grid-column: 1/-1; padding: 40px;">
+              <i class="fas fa-user-slash" style="font-size: 3rem; color: #ccc; margin-bottom: 15px;"></i>
+              <h3 style="color: #666; margin-bottom: 10px;">No Mentors Available</h3>
+              <p style="color: #999;">No mentors found in the database.</p>
+              <p style="color: #999; font-size: 0.9rem;">Please contact administrator to add mentors.</p>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      const html = mentorList.map(mentor => `
+        <div class="mentor-card" style="cursor: pointer;">
+          <div class="mentor-avatar">
+            <img src="${mentor.avatar}" alt="${mentor.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" 
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'fas fa-user-tie\\' style=\\'font-size: 2rem; color: white;\\'></i>';">
+          </div>
+          <div class="mentor-info">
+            <h4>${mentor.name}</h4>
+            <div class="specialization">${mentor.specialization}</div>
+            <div class="bio">${mentor.bio || 'Expert mentor ready to guide your learning journey'}</div>
+            <div class="mentor-stats">
+              <span><i class="fas fa-star"></i> ${mentor.rating || 4.5}</span>
+              <span><i class="fas fa-users"></i> ${mentor.students || 0} students</span>
+              <span><i class="fas fa-video"></i> ${mentor.sessions || mentor.sessionsCompleted || 0} sessions</span>
+            </div>
+          </div>
+          <div class="mentor-actions" style="margin-top: 10px;">
+            <button class="btn-primary" onclick="event.stopPropagation(); selectMentor('${mentor.id}')" 
+                    style="width: 100%; padding: 12px 20px; background: linear-gradient(135deg, #ff6b00, #00bfff, #32cd32); 
+                           background-size: 200% 200%; animation: gradientButton 4s ease infinite; 
+                           color: white; border: none; border-radius: 25px; font-weight: 600; 
+                           text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem;
+                           box-shadow: 0 8px 25px rgba(255, 107, 0, 0.4); 
+                           transition: all 0.3s ease; cursor: pointer;">
+              ✨ Select Mentor ✨
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      grid.innerHTML = html;
+      console.log('Mentors grid HTML updated with', mentorList.length, 'real mentors');
+    }
+
+    // Filter mentors
+    function filterMentors() {
+      const searchTerm = document.getElementById('mentor-search').value.toLowerCase();
+      const domainFilter = document.getElementById('domain-filter').value;
+      
+      let filtered = mentors.filter(mentor => {
+        const matchesSearch = mentor.name.toLowerCase().includes(searchTerm) || 
+                             mentor.specialization.toLowerCase().includes(searchTerm);
+        const matchesDomain = !domainFilter || mentor.domain === domainFilter;
+        return matchesSearch && matchesDomain;
+      });
+
+      displayMentors(filtered);
+    }
+
+    // Reset mentor filters
+    function resetMentorFilters() {
+      document.getElementById('mentor-search').value = '';
+      document.getElementById('domain-filter').value = '';
+      displayMentors(mentors);
+    }
+
+    // Select mentor
+    function selectMentor(mentorId) {
+      console.log('selectMentor called with ID:', mentorId);
+      console.log('Available mentors:', mentors);
+      
+      // Convert mentorId to string for comparison since MongoDB ObjectIds are strings
+      const mentorIdStr = String(mentorId);
+      selectedMentor = mentors.find(m => String(m.id) === mentorIdStr);
+      console.log('Selected mentor:', selectedMentor);
+      
+      if (selectedMentor) {
+        showMentorModal(selectedMentor);
+      } else {
+        console.error('Mentor not found with ID:', mentorId);
+        console.log('Available mentor IDs:', mentors.map(m => m.id));
+      }
+    }
+
+    // Show mentor selection modal
+    function showMentorModal(mentor) {
+      console.log('showMentorModal called with mentor:', mentor);
+      
+      const modal = document.getElementById('mentorModal');
+      const profileDiv = document.getElementById('selected-mentor-profile');
+      
+      console.log('Modal element:', modal);
+      console.log('Profile div element:', profileDiv);
+      
+      if (!modal) {
+        console.error('Modal element not found!');
+        return;
+      }
+      
+      if (!profileDiv) {
+        console.error('Profile div element not found!');
+        return;
+      }
+      
+      profileDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div class="mentor-avatar" style="width: 100px; height: 100px; font-size: 2.5rem; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <img src="${mentor.avatar}" alt="${mentor.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" 
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'fas fa-user-tie\\' style=\\'font-size: 2.5rem; color: white;\\'></i>';">
+          </div>
+          <h3 style="color: #fff; margin-bottom: 5px;">${mentor.name}</h3>
+          <div style="color: #ff6b00; font-weight: 500; margin-bottom: 10px;">${mentor.specialization}</div>
+          <p style="color: #ccc; line-height: 1.4;">${mentor.bio || 'Expert mentor ready to guide your learning journey'}</p>
+          <div class="mentor-stats" style="justify-content: center; gap: 30px; margin-top: 15px;">
+            <span><i class="fas fa-star"></i> ${mentor.rating || 4.5} Rating</span>
+            <span><i class="fas fa-users"></i> ${mentor.students || 0} Students</span>
+            <span><i class="fas fa-video"></i> ${mentor.sessions || mentor.sessionsCompleted || 0} Sessions</span>
+          </div>
+        </div>
+      `;
+      
+      modal.style.display = 'flex';
+      console.log('Modal should be visible now');
+    }
+
+    // Close mentor modal
+    function closeMentorModal() {
+      document.getElementById('mentorModal').style.display = 'none';
+    }
+
+    // Request mentorship
+    async function requestMentorship() {
+      if (!selectedMentor) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/auth/mentorship/request', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mentorId: selectedMentor.id,
+            message: 'I would like to request mentorship from you.'
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showNotificationToast({
+            type: 'success',
+            title: 'Mentorship Request Sent',
+            message: `Your request has been sent to ${selectedMentor.name}`
+          });
+          // Reload notifications to show any new ones
+          if (isNotificationPanelOpen) {
+            loadNotifications();
+          } else {
+            updateNotificationBadge();
+          }
+        } else {
+          // Handle different error types
+          if (data.type === 'duplicate_mentee') {
+            showNotificationToast({
+              type: 'warning',
+              title: 'Request Blocked',
+              message: `You are already a mentee of ${selectedMentor.name}. Check your notifications for details.`,
+              duration: 5000
+            });
+            // Force reload notifications to show the warning
+            loadNotifications();
+            // Open notifications panel to show the warning
+            if (!isNotificationPanelOpen) {
+              toggleNotifications();
+            }
+          } else {
+            showNotificationToast({
+              type: 'error',
+              title: 'Request Failed',
+              message: data.error || 'Failed to send mentorship request'
+            });
+          }
+        }
+
+        closeMentorModal();
+        
+      } catch (error) {
+        console.error('Error requesting mentorship:', error);
+        showNotificationToast({
+          type: 'error',
+          title: 'Connection Error',
+          message: 'Unable to send request. Please check your connection.'
+        });
+        closeMentorModal();
+      }
+    }
+
+    // Schedule mentor meeting
+    function scheduleMentorMeeting() {
+      if (!selectedMentor) return;
+      
+      showNotificationToast({
+        type: 'info',
+        title: 'Meeting Scheduled',
+        message: `Demo: Meeting scheduled with ${selectedMentor.name}`
+      });
+      
+      closeMentorModal();
+    }
+
+    // Populate mentor select dropdowns
+    function populateMentorSelects() {
+      const doubtMentorSelect = document.getElementById('doubt-mentor-select');
+      
+      const mentorOptions = mentors.map(mentor => 
+        `<option value="${mentor.id}">${mentor.name} - ${mentor.specialization}</option>`
+      ).join('');
+      
+      doubtMentorSelect.innerHTML = `
+        <option value="">Choose a mentor or ask publicly</option>
+        ${mentorOptions}
+      `;
+    }
+
+    // ==================== COLLABORATION & DOUBTS SYSTEM ====================
+
+    // Switch collaboration tabs
+    function switchCollabTab(tabName) {
+      // Update active tab button
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.tab-btn[onclick="switchCollabTab('${tabName}')"]`).classList.add('active');
+      
+      // Update active tab content
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+      
+      currentCollabTab = tabName;
+      
+      // Load relevant data
+      if (tabName === 'doubts') {
+        loadDoubts();
+      } else if (tabName === 'discussions') {
+        loadDiscussions();
+      } else if (tabName === 'progress') {
+        loadProgressData();
+      }
+    }
+
+    // Show ask doubt modal
+    function showAskDoubtModal() {
+      document.getElementById('doubtModal').style.display = 'flex';
+      document.getElementById('doubt-form').reset();
+    }
+
+    // Close doubt modal
+    function closeDoubtModal() {
+      document.getElementById('doubtModal').style.display = 'none';
+    }
+
+    // Submit doubt
+    async function submitDoubt() {
+      const doubtData = {
+        mentorId: document.getElementById('doubt-mentor-select').value || null,
+        category: document.getElementById('doubt-category').value,
+        subject: document.getElementById('doubt-title').value,
+        question: document.getElementById('doubt-description').value,
+        priority: document.getElementById('doubt-priority').value
+      };
+
+      if (!doubtData.category || !doubtData.subject || !doubtData.question) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/auth/doubts/submit', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(doubtData)
+        });
+
+        if (response.ok) {
+          showNotificationToast({
+            type: 'success',
+            title: 'Doubt Submitted',
+            message: 'Your doubt has been submitted successfully'
+          });
+        } else {
+          // Demo success
+          showNotificationToast({
+            type: 'success',
+            title: 'Doubt Submitted (Demo)',
+            message: 'Your doubt has been submitted successfully'
+          });
+        }
+
+        closeDoubtModal();
+        loadDoubts();
+        
+      } catch (error) {
+        console.error('Error submitting doubt:', error);
+        showNotificationToast({
+          type: 'success',
+          title: 'Demo Submission',
+          message: 'Your doubt has been submitted successfully'
+        });
+        closeDoubtModal();
+        loadDoubts();
+      }
+    }
+
+    // Load doubts
+    async function loadDoubts() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/auth/doubts', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          doubts = data.doubts || [];
+        } else {
+          // Demo doubts
+          doubts = [
+            {
+              id: 1,
+              title: 'How to implement JWT authentication in Node.js?',
+              description: 'I am having trouble understanding how to properly implement JWT token authentication in my Node.js application...',
+              category: 'web-development',
+              priority: 'high',
+              status: 'answered',
+              mentorName: 'Dr. Sarah Johnson',
+              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+              answers: 2
+            },
+            {
+              id: 2,
+              title: 'React useState vs useReducer - when to use which?',
+              description: 'Can someone explain the difference between useState and useReducer hooks in React and when I should use each one?',
+              category: 'programming',
+              priority: 'medium',
+              status: 'pending',
+              createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+              answers: 0
+            }
+          ];
+        }
+
+        displayDoubts(doubts);
+
+      } catch (error) {
+        console.error('Error loading doubts:', error);
+        doubts = [
+          {
+            id: 1,
+            title: 'Demo Doubt',
+            description: 'This is a demo doubt for testing purposes.',
+            category: 'general',
+            priority: 'medium',
+            status: 'pending',
+            createdAt: new Date(),
+            answers: 0
+          }
+        ];
+        displayDoubts(doubts);
+      }
+    }
+
+    // Display doubts
+    function displayDoubts(doubtsList) {
+      const container = document.getElementById('doubts-container');
+      
+      if (doubtsList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-question-circle" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+            <p>No doubts yet. Click "Ask a Doubt" to get started!</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = doubtsList.map(doubt => {
+        const timeAgo = getTimeAgo(doubt.createdAt);
+        return `
+          <div class="doubt-item">
+            <div class="doubt-header">
+              <div>
+                <div class="doubt-title">${doubt.subject}</div>
+                <span class="doubt-category">${doubt.category.charAt(0).toUpperCase() + doubt.category.slice(1)}</span>
+              </div>
+              <span class="doubt-status ${doubt.status}">${doubt.status}</span>
+            </div>
+            <div class="doubt-description">${doubt.question}</div>
+            <div class="doubt-meta">
+              <span><i class="fas fa-clock"></i> ${timeAgo}</span>
+              <span><i class="fas fa-comments"></i> ${doubt.answers || 0} answers</span>
+              ${doubt.mentorName ? `<span><i class="fas fa-user"></i> ${doubt.mentorName}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    // Filter doubts
+    function filterDoubts() {
+      const filter = document.getElementById('doubt-filter').value;
+      let filtered = doubts;
+      
+      if (filter !== 'all') {
+        filtered = doubts.filter(doubt => doubt.status === filter);
+      }
+      
+      displayDoubts(filtered);
+    }
+
+    // Load discussions
+    function loadDiscussions() {
+      const container = document.getElementById('discussions-container');
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+          <p>Discussions feature coming soon!</p>
+          <p style="font-size: 0.9rem;">This will show group discussions and peer interactions.</p>
+        </div>
+      `;
+    }
+
+    // Load progress data
+    function loadProgressData() {
+      // Demo progress data
+      document.getElementById('total-tasks').textContent = '12';
+      document.getElementById('completed-tasks').textContent = '8';
+      document.getElementById('active-goals').textContent = '3';
+      document.getElementById('mentor-sessions').textContent = '5';
+      
+      const activitiesList = document.getElementById('activities-list');
+      activitiesList.innerHTML = `
+        <div class="activity-item">
+          <div class="activity-icon"><i class="fas fa-check"></i></div>
+          <div class="activity-details">
+            <div class="activity-title">Completed JavaScript Fundamentals Task</div>
+            <div class="activity-time">2 hours ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon"><i class="fas fa-question"></i></div>
+          <div class="activity-details">
+            <div class="activity-title">Asked doubt about React hooks</div>
+            <div class="activity-time">1 day ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-icon"><i class="fas fa-video"></i></div>
+          <div class="activity-details">
+            <div class="activity-title">Attended mentorship session</div>
+            <div class="activity-time">3 days ago</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ==================== CHAT SYSTEM ====================
+
+    // Show chat widget
+    function showChat() {
+      document.getElementById('chatWidget').style.display = 'flex';
+    }
+
+    // Close chat
+    function closeChat() {
+      document.getElementById('chatWidget').style.display = 'none';
+    }
+
+    // Minimize chat
+    function minimizeChat() {
+      const widget = document.getElementById('chatWidget');
+      widget.style.height = widget.style.height === '50px' ? '400px' : '50px';
+    }
+
+    // Handle chat enter key
+    function handleChatEnter(event) {
+      if (event.key === 'Enter') {
+        sendChatMessage();
+      }
+    }
+
+    // Send chat message
+    function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      
+      if (!message) return;
+      
+      addChatMessage(message, 'sent');
+      input.value = '';
+      
+      // Simulate response
+      setTimeout(() => {
+        addChatMessage('Thanks for your message! This is a demo response.', 'received');
+      }, 1000);
+    }
+
+    // Add chat message
+    function addChatMessage(text, type) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `chat-message ${type}`;
+      messageDiv.textContent = text;
+      
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // ==================== INITIALIZATION ====================
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load initial data
+      loadMentors();
+      
+      // Set default active tab to doubts  
+      switchCollabTab('doubts');
+      
+      // Close modals when clicking outside
+      document.addEventListener('click', function(event) {
+        const mentorModal = document.getElementById('mentorModal');
+        const doubtModal = document.getElementById('doubtModal');
+        
+        if (event.target === mentorModal) {
+          closeMentorModal();
+        }
+        if (event.target === doubtModal) {
+          closeDoubtModal();
+        }
+      });
+    });
+
+    // Helper function for enhanced notifications
+    function showNotificationToast(notification) {
+      // Create toast element
+      const toast = document.createElement('div');
+      toast.className = 'notification-toast';
+      toast.innerHTML = `
+        <div class="toast-icon">
+          <i class="fas fa-${notification.type === 'success' ? 'check-circle' : 
+                              notification.type === 'info' ? 'info-circle' : 'exclamation-circle'}"></i>
+        </div>
+        <div class="toast-content">
+          <div class="toast-title">${notification.title}</div>
+          <div class="toast-message">${notification.message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+      `;
+
+      // Color based on type
+      const colors = {
+        success: 'linear-gradient(135deg, #2ecc71, #27ae60)',
+        info: 'linear-gradient(135deg, #3498db, #2980b9)',
+        warning: 'linear-gradient(135deg, #f39c12, #e67e22)',
+        error: 'linear-gradient(135deg, #e74c3c, #c0392b)'
+      };
+
+      // Add toast styles
+      toast.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: ${colors[notification.type] || colors.info};
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 1002;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 300px;
+        animation: slideInToast 0.3s ease;
+      `;
+
+      document.body.appendChild(toast);
+
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.remove();
+        }
+      }, 5000);
+    }
+  </script>
+
+  <!-- Notification System Script -->
+  <script>
+    let notifications = [];
+    let isNotificationPanelOpen = false;
+
+    // Toggle notification panel
+    function toggleNotifications() {
+      const panel = document.getElementById('notification-panel');
+      isNotificationPanelOpen = !isNotificationPanelOpen;
+      
+      if (isNotificationPanelOpen) {
+        panel.style.display = 'block';
+        loadNotifications();
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+
+    // Load notifications from backend
+    async function loadNotifications() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          // If no token, show mock notifications for demo
+          const mockNotifications = [
+            {
+              id: 1,
+              type: 'task',
+              title: 'New Task Assigned',
+              message: 'Your mentor has assigned you a new task: "Complete JavaScript Fundamentals"',
+              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+              read: false
+            }
+          ];
+          notifications = mockNotifications;
+          displayNotifications(notifications);
+          updateNotificationBadge();
+          return;
+        }
+
+        // Fetch real notifications from API
+        const response = await fetch('http://localhost:5000/api/auth/notifications', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          notifications = data.notifications || [];
+        } else {
+          // Fallback to mock notifications
+          notifications = [
+            {
+              id: 1,
+              type: 'task',
+              title: 'New Task Assigned',
+              message: 'Your mentor has assigned you a new task: "Complete JavaScript Fundamentals"',
+              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+              read: false
+            },
+            {
+              id: 2,
+              type: 'goal',
+              title: 'New Goal Set',
+              message: 'A new goal has been set: "Master React.js by end of month"',
+              timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+              read: false
+            }
+          ];
+        }
+
+        displayNotifications(notifications);
+        updateNotificationBadge();
+
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+        // Show demo notifications on error
+        const demoNotifications = [
+          {
+            id: 1,
+            type: 'task',
+            title: 'Demo: New Task Assigned',
+            message: 'This is a demo notification. Your mentor has assigned you a task.',
+            timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
+            read: false
+          }
+        ];
+        notifications = demoNotifications;
+        displayNotifications(notifications);
+        updateNotificationBadge();
+      }
+    }
+
+    // Display notifications in the panel
+    function displayNotifications(notificationList) {
+      const container = document.getElementById('notification-content');
+      
+      if (notificationList.length === 0) {
+        container.innerHTML = `
+          <div class="no-notifications">
+            <i class="fas fa-bell-slash"></i>
+            <p>No new notifications</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = notificationList.map(notification => {
+        const timeAgo = getTimeAgo(notification.timestamp);
+        return `
+          <div class="notification-item ${notification.read ? '' : 'unread'}" onclick="markAsRead(${notification.id})">
+            <div class="notification-type ${notification.type}">${notification.type.toUpperCase()}</div>
+            <div class="notification-title">${notification.title}</div>
+            <div class="notification-message">${notification.message}</div>
+            <div class="notification-time">${timeAgo}</div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    // Mark notification as read
+    async function markAsRead(notificationId) {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Send API request to mark as read
+          await fetch(`http://localhost:5000/api/auth/notifications/${notificationId}/read`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        }
+        
+        // Update local notifications
+        notifications = notifications.map(notification => {
+          if (notification.id === notificationId) {
+            notification.read = true;
+          }
+          return notification;
+        });
+        
+        displayNotifications(notifications);
+        updateNotificationBadge();
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+        // Still update locally for user experience
+        notifications = notifications.map(notification => {
+          if (notification.id === notificationId) {
+            notification.read = true;
+          }
+          return notification;
+        });
+        
+        displayNotifications(notifications);
+        updateNotificationBadge();
+      }
+    }
+
+    // Update notification badge count
+    function updateNotificationBadge() {
+      const badge = document.getElementById('notification-badge');
+      const unreadCount = notifications.filter(n => !n.read).length;
+      
+      if (unreadCount > 0) {
+        badge.style.display = 'block';
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Get time ago string
+    function getTimeAgo(timestamp) {
+      const now = new Date();
+      const diff = now - new Date(timestamp);
+      const minutes = Math.floor(diff / (1000 * 60));
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+      if (minutes < 60) {
+        return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+      } else if (hours < 24) {
+        return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+      } else {
+        return `${days} day${days !== 1 ? 's' : ''} ago`;
+      }
+    }
+
+    // Show notification toast (for real-time notifications)
+    function showNotificationToast(notification) {
+      // Create toast element
+      const toast = document.createElement('div');
+      toast.className = `notification-toast toast-${notification.type}`;
+      
+      // Get appropriate icon based on type
+      let icon;
+      switch(notification.type) {
+        case 'warning':
+          icon = 'exclamation-triangle';
+          break;
+        case 'error':
+          icon = 'exclamation-circle';
+          break;
+        case 'success':
+          icon = 'check-circle';
+          break;
+        case 'task':
+          icon = 'tasks';
+          break;
+        case 'goal':
+          icon = 'target';
+          break;
+        default:
+          icon = 'bell';
+      }
+      
+      toast.innerHTML = `
+        <div class="toast-icon">
+          <i class="fas fa-${icon}"></i>
+        </div>
+        <div class="toast-content">
+          <div class="toast-title">${notification.title}</div>
+          <div class="toast-message">${notification.message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+      `;
+
+      // Get background color based on type
+      let backgroundColor;
+      switch(notification.type) {
+        case 'warning':
+          backgroundColor = 'linear-gradient(135deg, #ff9500, #ffad33)';
+          break;
+        case 'error':
+          backgroundColor = 'linear-gradient(135deg, #ff4757, #ff6b7a)';
+          break;
+        case 'success':
+          backgroundColor = 'linear-gradient(135deg, #2ed573, #4caf50)';
+          break;
+        default:
+          backgroundColor = 'linear-gradient(135deg, #ff6b00, #ff8c42)';
+      }
+
+      // Add toast styles
+      toast.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: ${backgroundColor};
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 1002;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 300px;
+        animation: slideInToast 0.3s ease;
+      `;
+
+      document.body.appendChild(toast);
+
+      // Auto remove after specified duration or default 3 seconds
+      const duration = notification.duration || 3000;
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.remove();
+        }
+      }, duration);
+
+      // Request notification permission and show browser notification
+      if (Notification.permission === 'granted') {
+        new Notification(notification.title, {
+          body: notification.message,
+          icon: '/Frontend/credentials/image.jpg'
+        });
+      }
+    }
+
+    // Initialize notifications on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Request notification permission
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      
+      // Load initial notifications
+      loadNotifications();
+      
+      // Check for new notifications every 30 seconds
+      setInterval(loadNotifications, 30000);
+      
+      // Close notification panel when clicking outside
+      document.addEventListener('click', function(event) {
+        const panel = document.getElementById('notification-panel');
+        const bell = document.querySelector('.notification-bell');
+        
+        if (isNotificationPanelOpen && 
+            !panel.contains(event.target) && 
+            !bell.contains(event.target)) {
+          toggleNotifications();
+        }
+      });
+    });
+
+    // Add toast animation CSS
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideInToast {
+        from {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      
+      .toast-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
 
 </body>
 </html>

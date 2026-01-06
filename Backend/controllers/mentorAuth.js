@@ -51,13 +51,28 @@ exports.mentorSignin = async (req, res) => {
   
       // Generate a JWT token for the mentor
       const token = jwt.sign(
-        { mentorId: mentor._id, email: mentor.email },
-        process.env.JWT_SECRET, // Make sure to set this in your .env file
-        { expiresIn: '1h' } // Token expiration time
+        { 
+          id: mentor._id,
+          mentorId: mentor._id,
+          email: mentor.email,
+          role: 'mentor',
+          userType: 'mentor'
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
       );
   
-      // Send response with the token
-      res.status(200).json({ message: 'Sign-in successful!', token });
+      // Send response with the token and mentor info
+      res.status(200).json({ 
+        message: 'Sign-in successful!', 
+        token,
+        mentor: {
+          id: mentor._id,
+          fullname: mentor.fullname,
+          email: mentor.email,
+          domainId: mentor.domainId
+        }
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
