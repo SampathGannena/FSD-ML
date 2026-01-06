@@ -25,8 +25,14 @@ const securityConfig = require('./config/security');
 dotenv.config();
 const app = express();
 
-// Apply security middleware
-securityConfig(app);
+// Apply security middleware - commented out for debugging
+// securityConfig(app);
+console.log('Security middleware temporarily disabled for debugging');
+
+// Health check endpoint (before any middleware)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
 
 // Serve static files from the entire Frontend folder
 app.use(express.static(path.join(__dirname, '../Frontend')));
