@@ -1623,7 +1623,10 @@ app.post('/api/code-editor/execute', authMiddleware, async (req, res) => {
 // ============== End Code Editor API ==============
 
 const PORT = process.env.PORT || 5000; // Changed from 7000 to 5000 
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const HOST = '0.0.0.0'; // Bind to all network interfaces for Railway
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Server running on ${HOST}:${PORT}`);
+});
 
 // Configure PeerJS Server to use the existing HTTP server
 const peerServer = PeerServer({
