@@ -46,10 +46,6 @@ app.use('/Dashboards', express.static(path.join(__dirname, '../Frontend/Dashboar
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Route for landing page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/landing/land.html'));
-});
 app.use(bodyParser.json());
 
 // Configure CORS
@@ -67,6 +63,23 @@ app.use(express.json());
 // Handle Chrome DevTools well-known endpoint to suppress CSP warning
 app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
   res.json({});
+});
+
+// Route for landing page (moved after middleware setup)
+app.get('/', (req, res) => {
+  try {
+    const filePath = path.join(__dirname, '../Frontend/landing/land.html');
+    console.log('Serving homepage from:', filePath);
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Error serving homepage:', err);
+        res.status(500).send('Error loading homepage');
+      }
+    });
+  } catch (error) {
+    console.error('Homepage route error:', error);
+    res.status(500).send('Server error');
+  }
 });
 
 mongoose.connect(process.env.MONGO_URI)
@@ -1622,10 +1635,36 @@ app.post('/api/code-editor/execute', authMiddleware, async (req, res) => {
 
 // ============== End Code Editor API ==============
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({ error: 'Internal server error', message: err.message });
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  console.log('404 - Route not found:', req.url);
+  res.status(404).send('Route not found');
+});
+
 const PORT = process.env.PORT || 5000; // Changed from 7000 to 5000 
 const HOST = '0.0.0.0'; // Bind to all network interfaces for Railway
 const server = app.listen(PORT, HOST, () => {
   console.log(`Server running on ${HOST}:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
 });
 
 // Configure PeerJS Server to use the existing HTTP server
