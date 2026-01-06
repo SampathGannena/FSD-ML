@@ -57,7 +57,7 @@ app.use(bodyParser.json());
 // Configure CORS
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://your-frontend-domain.com']
+    ? ['https://fsd-ml-4knj.onrender.com']
     : ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:5500'],
   credentials: true,
   optionsSuccessStatus: 200

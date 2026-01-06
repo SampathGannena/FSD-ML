@@ -30,7 +30,7 @@ document.getElementById("study-form").addEventListener("submit", async function 
         resultDiv.innerHTML = `✅ You're matched with: <strong>Group ${groupName}</strong>`;
       
         // Send matched group to Node backend
-        await fetch('http://localhost:5000/api/match-groups', {
+        await fetch(`${window.location.origin}/api/match-groups`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

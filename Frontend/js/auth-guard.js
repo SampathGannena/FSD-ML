@@ -28,7 +28,7 @@ async function checkAuthentication() {
   
   try {
     // Verify token with backend
-    const response = await fetch('http://localhost:5000/api/profile', {
+    const response = await fetch(`${window.location.origin}/api/profile`, {
       headers: { 
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json'

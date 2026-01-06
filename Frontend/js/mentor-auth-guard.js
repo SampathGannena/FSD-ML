@@ -50,7 +50,7 @@
     try {
       console.log('🔍 Verifying mentor token...');
       
-      const response = await fetch('http://localhost:5000/api/mentor/profile', {
+      const response = await fetch(`${window.location.origin}/api/mentor/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

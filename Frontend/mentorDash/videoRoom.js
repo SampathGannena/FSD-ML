@@ -157,7 +157,7 @@ class VideoRoom {
 
   connectWebSocket(displayName) {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.ws = new WebSocket(`${wsProtocol}//localhost:5000`);
+    this.ws = new WebSocket(`${wsProtocol}//${window.location.host}`);
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');

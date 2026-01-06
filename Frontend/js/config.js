@@ -5,11 +5,11 @@ const CONFIG = {
     // Automatically detect environment
     API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:5000/api'  // Development
-        : 'https://your-backend-url.com/api',  // Production - UPDATE THIS!
+        : 'https://fsd-ml-4knj.onrender.com/api',  // Production
     
     WS_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'ws://localhost:5000'  // Development
-        : 'wss://your-backend-url.com',  // Production - UPDATE THIS!
+        : 'wss://fsd-ml-4knj.onrender.com',  // Production
     
     // Timeout settings
     REQUEST_TIMEOUT: 30000, // 30 seconds
