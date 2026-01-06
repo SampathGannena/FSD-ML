@@ -1024,20 +1024,21 @@ body {
 .plan-btn {
     display: block;
     width: 100%;
-    padding: 18px;
+    padding: 14px 20px;
     background: linear-gradient(135deg, #ff6b00, #ff4b2b);
     color: #fff;
     text-decoration: none;
-    border-radius: 15px;
+    border-radius: 12px;
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 1px;
+    text-align: center;
     transition: all 0.4s ease;
-    margin-top: 30px;
+    margin-top: 25px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 8px 25px rgba(255, 107, 0, 0.5);
+    box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
     border: 2px solid transparent;
 }
 
