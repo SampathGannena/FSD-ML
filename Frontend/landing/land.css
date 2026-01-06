@@ -1030,3 +1030,855 @@ body {
         justify-content: center;
     }
 }
+
+/* ========== COMPREHENSIVE RESPONSIVE STYLES ========== */
+
+/* Tablet Landscape - 1024px and below */
+@media (max-width: 1024px) {
+    .navbar {
+        padding: 15px 30px;
+        width: 93%;
+    }
+    
+    .hero h1 {
+        font-size: 2.2em;
+    }
+    
+    .glass-container {
+        max-width: 600px;
+        padding: 35px;
+    }
+    
+    .hero-stats {
+        gap: 40px;
+    }
+    
+    .demo-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .feature-box {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .pricing-card.featured {
+        grid-column: span 2;
+    }
+}
+
+/* Tablet Portrait - 768px and below */
+@media (max-width: 768px) {
+    /* Navigation */
+    .navbar {
+        padding: 12px 20px;
+        width: 90%;
+        height: auto;
+    }
+    
+    .logo h1 {
+        font-size: 1.2rem;
+    }
+    
+    .logo img {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .hamburger {
+        display: flex;
+    }
+    
+    .nav-links {
+        position: fixed;
+        top: 70px;
+        right: -300px;
+        width: 250px;
+        height: 100vh;
+        background: rgba(26, 26, 46, 0.98);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        padding: 30px 20px;
+        gap: 15px;
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+        border-left: 2px solid rgba(255, 107, 0, 0.3);
+    }
+    
+    .nav-links.active {
+        right: 0;
+    }
+    
+    .nav-links li {
+        width: 100%;
+    }
+    
+    .nav-links a {
+        display: block;
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+    }
+    
+    .nav-links a:hover {
+        background: rgba(255, 107, 0, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Hero Section */
+    .hero {
+        height: auto;
+        min-height: 100vh;
+        padding: 100px 20px 50px;
+    }
+    
+    .hero h1 {
+        font-size: 1.8em;
+        line-height: 1.3;
+    }
+    
+    .hero p {
+        font-size: 1rem;
+    }
+    
+    .glass-container {
+        padding: 30px 25px;
+        max-width: 100%;
+    }
+    
+    .hero-stats {
+        flex-direction: column;
+        gap: 25px;
+    }
+    
+    .stat i {
+        font-size: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+    }
+    
+    .buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .btn, .btn-alt {
+        width: 100%;
+        text-align: center;
+    }
+    
+    /* About Section */
+    .about {
+        flex-direction: column;
+        padding: 60px 20px;
+    }
+    
+    .about-text, .about-img {
+        width: 100%;
+    }
+    
+    .about h2 {
+        font-size: 2rem;
+    }
+    
+    .about-features {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .about-img {
+        margin-top: 30px;
+    }
+    
+    /* Features Section */
+    .features {
+        padding: 60px 20px;
+    }
+    
+    .features h2 {
+        font-size: 2rem;
+    }
+    
+    .features-subtitle {
+        font-size: 1rem;
+        padding: 0 15px;
+    }
+    
+    .feature-box {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .feature {
+        padding: 25px 20px;
+    }
+    
+    .feature-icon {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .feature-icon i {
+        font-size: 2rem;
+    }
+    
+    .feature h3 {
+        font-size: 1.2rem;
+    }
+    
+    .feature p {
+        font-size: 0.95rem;
+    }
+    
+    /* Demo Section */
+    .demo-section {
+        padding: 60px 20px;
+    }
+    
+    .demo-section h2 {
+        font-size: 2rem;
+    }
+    
+    .demo-subtitle {
+        font-size: 1rem;
+        padding: 0 15px;
+    }
+    
+    .demo-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .demo-card {
+        max-width: 100%;
+    }
+    
+    .demo-video {
+        height: 200px;
+    }
+    
+    .play-overlay i {
+        font-size: 3rem;
+    }
+    
+    .demo-content {
+        padding: 20px;
+    }
+    
+    .demo-content h3 {
+        font-size: 1.1rem;
+    }
+    
+    .demo-content p {
+        font-size: 0.9rem;
+    }
+    
+    /* Use Cases */
+    .use-cases {
+        padding: 60px 20px;
+    }
+    
+    .use-cases h2 {
+        font-size: 2rem;
+    }
+    
+    .use-case-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .use-case {
+        padding: 30px 25px;
+    }
+    
+    .use-case i {
+        font-size: 2.5rem;
+    }
+    
+    .use-case h3 {
+        font-size: 1.3rem;
+    }
+    
+    /* Testimonials */
+    .testimonials {
+        padding: 60px 20px;
+    }
+    
+    .testimonials h2 {
+        font-size: 2rem;
+    }
+    
+    .testimonial-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .testimonial {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .stars {
+        font-size: 1.3rem;
+    }
+    
+    .testimonial p {
+        font-size: 0.95rem;
+    }
+    
+    /* Pricing Section */
+    .pricing-section {
+        padding: 60px 20px;
+    }
+    
+    .pricing-section h2 {
+        font-size: 2rem;
+    }
+    
+    .pricing-subtitle {
+        font-size: 1rem;
+        padding: 0 15px;
+    }
+    
+    .pricing-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .pricing-card {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .pricing-card.featured {
+        transform: scale(1);
+        grid-column: auto;
+    }
+    
+    .price .amount {
+        font-size: 3rem;
+    }
+    
+    /* CTA Section */
+    .cta {
+        padding: 60px 20px;
+    }
+    
+    .cta h2 {
+        font-size: 2rem;
+        line-height: 1.3;
+        padding: 0 10px;
+    }
+    
+    .cta p {
+        font-size: 1rem;
+        padding: 0 15px;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        width: 100%;
+        gap: 15px;
+    }
+    
+    .btn-glow, .btn-outline {
+        width: 90%;
+        max-width: 350px;
+        text-align: center;
+    }
+    
+    .cta-note {
+        font-size: 0.85rem;
+        padding: 0 20px;
+    }
+    
+    /* Footer */
+    .footer {
+        padding: 40px 20px 20px;
+    }
+    
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        text-align: center;
+    }
+    
+    .social-links {
+        justify-content: center;
+    }
+    
+    .footer-section h3 {
+        font-size: 1.3rem;
+    }
+    
+    .footer-section h4 {
+        font-size: 1rem;
+    }
+    
+    /* Modal */
+    .modal-content {
+        width: 95%;
+        padding: 30px 20px;
+        max-height: 85vh;
+    }
+    
+    .modal-content h2 {
+        font-size: 1.5rem;
+        padding-right: 40px;
+    }
+    
+    .modal-close {
+        font-size: 1.5rem;
+        right: 20px;
+    }
+}
+
+/* Mobile - 480px and below */
+@media (max-width: 480px) {
+    /* Navigation */
+    .navbar {
+        padding: 10px 15px;
+        width: 88%;
+    }
+    
+    .logo h1 {
+        font-size: 1rem;
+    }
+    
+    .logo img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .nav-links {
+        width: 220px;
+        padding: 25px 15px;
+    }
+    
+    .hamburger span {
+        width: 22px;
+        height: 2.5px;
+    }
+    
+    /* Hero Section */
+    .hero {
+        padding: 90px 15px 40px;
+    }
+    
+    .hero h1 {
+        font-size: 1.5em;
+    }
+    
+    .hero p {
+        font-size: 0.9rem;
+    }
+    
+    .glass-container {
+        padding: 25px 20px;
+    }
+    
+    .stat i {
+        font-size: 1.8rem;
+    }
+    
+    .stat-number {
+        font-size: 1.6rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+    }
+    
+    .btn, .btn-alt {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .btn i, .btn-alt i {
+        font-size: 0.9rem;
+    }
+    
+    /* About Section */
+    .about {
+        padding: 50px 15px;
+    }
+    
+    .about h2 {
+        font-size: 1.6rem;
+    }
+    
+    .about p {
+        font-size: 0.95rem;
+    }
+    
+    .about-feature {
+        padding: 12px;
+    }
+    
+    .about-feature i {
+        font-size: 1.5rem;
+    }
+    
+    .about-feature span {
+        font-size: 0.9rem;
+    }
+    
+    /* Features Section */
+    .features {
+        padding: 50px 15px;
+    }
+    
+    .features h2 {
+        font-size: 1.6rem;
+    }
+    
+    .features-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .feature {
+        padding: 20px 15px;
+    }
+    
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .feature-icon i {
+        font-size: 1.8rem;
+    }
+    
+    .feature h3 {
+        font-size: 1.1rem;
+    }
+    
+    .feature p {
+        font-size: 0.9rem;
+    }
+    
+    .feature-tag {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+    
+    /* Demo Section */
+    .demo-section {
+        padding: 50px 15px;
+    }
+    
+    .demo-section h2 {
+        font-size: 1.6rem;
+    }
+    
+    .demo-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .demo-grid {
+        gap: 20px;
+    }
+    
+    .demo-video {
+        height: 180px;
+    }
+    
+    .play-overlay i {
+        font-size: 2.5rem;
+    }
+    
+    .demo-content {
+        padding: 18px 15px;
+    }
+    
+    .demo-content h3 {
+        font-size: 1rem;
+    }
+    
+    .demo-content p {
+        font-size: 0.85rem;
+    }
+    
+    .demo-btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+    
+    /* Use Cases */
+    .use-cases {
+        padding: 50px 15px;
+    }
+    
+    .use-cases h2 {
+        font-size: 1.6rem;
+    }
+    
+    .use-case {
+        padding: 25px 20px;
+    }
+    
+    .use-case i {
+        font-size: 2.2rem;
+    }
+    
+    .use-case h3 {
+        font-size: 1.2rem;
+    }
+    
+    .use-case p {
+        font-size: 0.9rem;
+    }
+    
+    /* Testimonials */
+    .testimonials {
+        padding: 50px 15px;
+    }
+    
+    .testimonials h2 {
+        font-size: 1.6rem;
+    }
+    
+    .testimonial {
+        padding: 25px 20px;
+    }
+    
+    .stars {
+        font-size: 1.2rem;
+    }
+    
+    .testimonial p {
+        font-size: 0.9rem;
+    }
+    
+    .testimonial-author img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .testimonial-author h4 {
+        font-size: 0.9rem;
+    }
+    
+    .testimonial-author span {
+        font-size: 0.75rem;
+    }
+    
+    /* Pricing Section */
+    .pricing-section {
+        padding: 50px 15px;
+    }
+    
+    .pricing-section h2 {
+        font-size: 1.6rem;
+    }
+    
+    .pricing-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .pricing-card {
+        padding: 30px 20px;
+    }
+    
+    .pricing-card h3 {
+        font-size: 1.6rem;
+    }
+    
+    .plan-badge {
+        font-size: 0.75rem;
+        padding: 5px 14px;
+    }
+    
+    .price .currency {
+        font-size: 1.3rem;
+    }
+    
+    .price .amount {
+        font-size: 2.5rem;
+    }
+    
+    .price .period {
+        font-size: 1rem;
+    }
+    
+    .features-list li {
+        font-size: 0.9rem;
+        padding: 10px 0;
+    }
+    
+    .plan-btn {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+    
+    /* CTA Section */
+    .cta {
+        padding: 50px 15px;
+    }
+    
+    .cta h2 {
+        font-size: 1.6rem;
+    }
+    
+    .cta p {
+        font-size: 0.9rem;
+    }
+    
+    .btn-glow, .btn-outline {
+        padding: 12px 25px;
+        font-size: 0.9rem;
+    }
+    
+    .cta-note {
+        font-size: 0.75rem;
+        line-height: 1.5;
+    }
+    
+    /* Footer */
+    .footer {
+        padding: 35px 15px 15px;
+    }
+    
+    .footer-content {
+        gap: 25px;
+    }
+    
+    .footer-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .footer-section h4 {
+        font-size: 0.95rem;
+    }
+    
+    .footer-section p {
+        font-size: 0.85rem;
+    }
+    
+    .footer-section ul li {
+        font-size: 0.85rem;
+    }
+    
+    .social-links a {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+    }
+    
+    .footer-bottom p {
+        font-size: 0.8rem;
+    }
+    
+    /* Modal */
+    .modal-content {
+        padding: 25px 15px;
+    }
+    
+    .modal-content h2 {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+    }
+    
+    .modal-close {
+        font-size: 1.3rem;
+        top: 15px;
+        right: 15px;
+    }
+    
+    .demo-placeholder i {
+        font-size: 3.5rem;
+    }
+    
+    .demo-placeholder p {
+        font-size: 0.9rem;
+    }
+    
+    .demo-placeholder small {
+        font-size: 0.75rem;
+        padding: 0 15px;
+    }
+    
+    .demo-description {
+        font-size: 0.85rem;
+    }
+}
+
+/* Extra Small Devices - 360px and below */
+@media (max-width: 360px) {
+    .navbar {
+        padding: 8px 10px;
+    }
+    
+    .logo h1 {
+        font-size: 0.9rem;
+    }
+    
+    .logo img {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .hero h1 {
+        font-size: 1.3em;
+    }
+    
+    .glass-container {
+        padding: 20px 15px;
+    }
+    
+    .stat-number {
+        font-size: 1.4rem;
+    }
+    
+    .about h2, .features h2, .demo-section h2, 
+    .use-cases h2, .testimonials h2, 
+    .pricing-section h2, .cta h2 {
+        font-size: 1.4rem;
+    }
+    
+    .feature-icon {
+        width: 55px;
+        height: 55px;
+    }
+    
+    .feature-icon i {
+        font-size: 1.6rem;
+    }
+    
+    .pricing-card {
+        padding: 25px 15px;
+    }
+    
+    .price .amount {
+        font-size: 2.2rem;
+    }
+}
+
+/* Landscape Mode for Mobile */
+@media (max-height: 600px) and (orientation: landscape) {
+    .hero {
+        min-height: auto;
+        padding: 100px 20px 50px;
+    }
+    
+    .hero-stats {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    
+    .stat {
+        flex: 1;
+        min-width: 150px;
+    }
+}
