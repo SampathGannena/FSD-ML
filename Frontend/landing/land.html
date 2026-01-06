@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/landing/">
-    <title>AI Study Group Finder</title>
+    <title>StudyFinder - AI-Powered Collaborative Learning Platform</title>
+    <meta name="description" content="Transform your learning experience with AI-powered study group matching, real-time collaboration, mentorship programs, and advanced progress tracking.">
     <link rel="stylesheet" href="land.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="../js/notifications.js"></script>
     <script defer src="land.js"></script>
 </head>
@@ -18,10 +20,11 @@
             <h1>StudyFinder</h1>
         </div>
         <ul class="nav-links">
-            <li><a href="#home" >Home</a></li>
-            <li><a href="#about">About Us</a></li>
+            <li><a href="#home">Home</a></li>
             <li><a href="#features">Features</a></li>
-            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#demo">Demos</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#testimonials">Reviews</a></li>
         </ul>
         <div class="hamburger">
             <span></span>
@@ -33,11 +36,28 @@
     <!-- Hero Section -->
     <header class="hero" id="home">
         <div class="glass-container">
-            <h1>Study Smarter, <span class="highlight">Not Harder</span></h1>
-            <p>Find the perfect study group with AI-powered recommendations.</p>
+            <h1>Transform Your Learning with <span class="highlight">AI-Powered Collaboration</span></h1>
+            <p>The complete platform for students and professionals - Study groups, mentorship, real-time collaboration, and progress tracking.</p>
+            <div class="hero-stats">
+                <div class="stat">
+                    <i class="fas fa-users"></i>
+                    <span class="stat-number">10,000+</span>
+                    <span class="stat-label">Active Learners</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span class="stat-number">500+</span>
+                    <span class="stat-label">Expert Mentors</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-users-cog"></i>
+                    <span class="stat-number">2,000+</span>
+                    <span class="stat-label">Study Groups</span>
+                </div>
+            </div>
             <div class="buttons">
-                <a href="next.html" class="btn">Get Started</a>
-                <!-- <a href="#" class="btn-alt">Learn More</a> -->
+                <a href="next.html" class="btn"><i class="fas fa-rocket"></i> Get Started Free</a>
+                <a href="#demo" class="btn-alt"><i class="fas fa-play-circle"></i> Watch Demo</a>
             </div>
         </div>
     </header>
@@ -45,9 +65,26 @@
     <!-- About Section -->
     <section class="about" id="about">
         <div class="about-text">
-            <h2>📖 What is Study Group Finder?</h2>
-            <p>An AI-powered platform that connects students with the best study groups based on interests, subjects, and skill levels.</p>
-            <p>Collaborate, learn, and succeed together.</p>
+            <h2>📖 Complete Learning Ecosystem</h2>
+            <p>StudyFinder is an enterprise-grade collaborative learning platform that leverages AI to create the perfect study environment. Whether you're a student, professional, or lifelong learner, we provide everything you need to succeed.</p>
+            <div class="about-features">
+                <div class="about-feature">
+                    <i class="fas fa-brain"></i>
+                    <span>AI-Powered Matching</span>
+                </div>
+                <div class="about-feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Enterprise Security</span>
+                </div>
+                <div class="about-feature">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Advanced Analytics</span>
+                </div>
+                <div class="about-feature">
+                    <i class="fas fa-globe"></i>
+                    <span>Global Community</span>
+                </div>
+            </div>
         </div>
         <div class="about-img">
             <img src="https://i.pinimg.com/736x/6e/59/d7/6e59d7d914c4195a06fa09f08702e5b5.jpg" alt="Study Group">
@@ -56,46 +93,483 @@
 
     <!-- Features Section -->
     <section class="features" id="features">
-        <h2>🚀 Why Choose Us?</h2>
+        <h2>🚀 Powerful Features for Modern Learning</h2>
+        <p class="features-subtitle">Everything you need to collaborate, learn, and grow in one platform</p>
         <div class="feature-box">
             <div class="feature">
-                <img src="Ai.webp" alt="AI Icon">
-                <h3>Smart AI Matching</h3>
-                <p>Find the best study partners based on your learning style.</p>
+                <div class="feature-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3>AI-Powered Matching</h3>
+                <p>Advanced machine learning algorithms match you with ideal study partners based on learning style, subjects, and goals.</p>
+                <span class="feature-tag">Core Feature</span>
             </div>
             <div class="feature">
-                <img src="chat.webp" alt="Chat Icon">
-                <h3>Instant Collaboration</h3>
-                <p>Discuss, share, and learn with seamless real-time chat.</p>
+                <div class="feature-icon">
+                    <i class="fas fa-video"></i>
+                </div>
+                <h3>Video Conferencing</h3>
+                <p>Built-in HD video rooms with screen sharing, recording, and breakout sessions for seamless virtual collaboration.</p>
+                <span class="feature-tag">Premium</span>
             </div>
             <div class="feature">
-                <img src="global.png" alt="Global Icon">
-                <h3>Global Learning</h3>
-                <p>Connect with students worldwide and expand your network.</p>
+                <div class="feature-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h3>Real-Time Chat</h3>
+                <p>Instant messaging with file sharing, code snippets, emoji reactions, and threaded conversations.</p>
+                <span class="feature-tag">Core Feature</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <h3>Mentorship Program</h3>
+                <p>Connect with expert mentors for personalized guidance, career advice, and skill development.</p>
+                <span class="feature-tag">Premium</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3>Collaborative Code Editor</h3>
+                <p>Real-time code collaboration with syntax highlighting, multiple language support, and live cursors.</p>
+                <span class="feature-tag">Pro</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <h3>Interactive Whiteboard</h3>
+                <p>Digital whiteboard with drawing tools, shapes, text, and real-time collaboration for brainstorming sessions.</p>
+                <span class="feature-tag">Pro</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3>Task Management</h3>
+                <p>Create, assign, and track tasks with deadlines, priorities, and progress monitoring.</p>
+                <span class="feature-tag">Core Feature</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Progress Analytics</h3>
+                <p>Comprehensive dashboards with learning metrics, study streaks, and achievement tracking.</p>
+                <span class="feature-tag">Premium</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <h3>Doubt Resolution</h3>
+                <p>Post questions, get expert answers, and build a knowledge base for your study community.</p>
+                <span class="feature-tag">Core Feature</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>File Sharing & Storage</h3>
+                <p>Secure cloud storage for notes, documents, presentations with version control.</p>
+                <span class="feature-tag">Premium</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <h3>Session Scheduling</h3>
+                <p>Smart calendar integration with automated reminders and timezone management.</p>
+                <span class="feature-tag">Pro</span>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <h3>Global Community</h3>
+                <p>Connect with learners worldwide, join international study groups, and expand your network.</p>
+                <span class="feature-tag">Core Feature</span>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
+    <!-- Demo Section -->
+    <section class="demo-section" id="demo">
+        <h2>🎬 See StudyFinder in Action</h2>
+        <p class="demo-subtitle">Experience our powerful features through interactive demos</p>
+        
+        <div class="demo-grid">
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800" alt="AI Matching Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-robot"></i> AI Matching Algorithm</h3>
+                    <p>Watch how our AI analyzes your profile and preferences to find the perfect study group matches in seconds.</p>
+                    <button class="demo-btn" onclick="showDemo('ai-matching')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=800" alt="Video Conference Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-video"></i> Video Conferencing</h3>
+                    <p>Explore our HD video rooms with screen sharing, recording, and collaborative tools for effective virtual learning.</p>
+                    <button class="demo-btn" onclick="showDemo('video-conference')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1517842645767-c639042777db?w=800" alt="Real-time Collaboration Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-code"></i> Code Editor & Whiteboard</h3>
+                    <p>See real-time collaboration in action with our code editor and interactive whiteboard features.</p>
+                    <button class="demo-btn" onclick="showDemo('collaboration')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=800" alt="Mentorship Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-chalkboard-teacher"></i> Mentorship Program</h3>
+                    <p>Discover how to connect with expert mentors and schedule personalized guidance sessions.</p>
+                    <button class="demo-btn" onclick="showDemo('mentorship')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800" alt="Analytics Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-chart-line"></i> Progress Tracking</h3>
+                    <p>View comprehensive analytics dashboards showing your learning progress, achievements, and insights.</p>
+                    <button class="demo-btn" onclick="showDemo('analytics')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <div class="demo-video">
+                    <img src="https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=800" alt="Chat Demo">
+                    <div class="play-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="demo-content">
+                    <h3><i class="fas fa-comments"></i> Group Chat & Files</h3>
+                    <p>Experience instant messaging with file sharing, reactions, and organized group conversations.</p>
+                    <button class="demo-btn" onclick="showDemo('chat')">
+                        <i class="fas fa-play"></i> Play Demo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="use-cases">
+        <h2>💼 Perfect For Every Learning Scenario</h2>
+        <div class="use-case-grid">
+            <div class="use-case">
+                <i class="fas fa-graduation-cap"></i>
+                <h3>Students</h3>
+                <p>Ace your exams with collaborative study groups, mentor support, and peer learning.</p>
+            </div>
+            <div class="use-case">
+                <i class="fas fa-briefcase"></i>
+                <h3>Professionals</h3>
+                <p>Upskill with industry experts, join professional development groups, and network globally.</p>
+            </div>
+            <div class="use-case">
+                <i class="fas fa-university"></i>
+                <h3>Educational Institutions</h3>
+                <p>Enhance campus learning with virtual study spaces and analytics for educators.</p>
+            </div>
+            <div class="use-case">
+                <i class="fas fa-building"></i>
+                <h3>Corporate Training</h3>
+                <p>Facilitate employee training programs with collaborative tools and progress tracking.</p>
+            </div>
+        </div>
+    </section>
     <section class="testimonials" id="testimonials">
-        <h2>💬 What Our Users Say</h2>
+        <h2>💬 Trusted by Thousands of Learners</h2>
         <div class="testimonial-container">
             <div class="testimonial">
-                <p>“I found an amazing study group for my exams. The AI recommendations were spot on!”</p>
-                <h4>- Aditi, Computer Science</h4>
+                <div class="stars">★★★★★</div>
+                <p>"The AI matching is incredible! Found my perfect study group in minutes. The collaboration tools are top-notch."</p>
+                <div class="testimonial-author">
+                    <img src="https://i.pravatar.cc/100?img=1" alt="Aditi">
+                    <div>
+                        <h4>Aditi Sharma</h4>
+                        <span>Computer Science Student</span>
+                    </div>
+                </div>
             </div>
             <div class="testimonial">
-                <p>“The real-time chat and collaboration tools make studying so much easier and fun!”</p>
-                <h4>- Rahul, Engineering</h4>
+                <div class="stars">★★★★★</div>
+                <p>"The mentorship program changed my career trajectory. Connected with industry experts who guided me every step of the way."</p>
+                <div class="testimonial-author">
+                    <img src="https://i.pravatar.cc/100?img=13" alt="Rahul">
+                    <div>
+                        <h4>Rahul Verma</h4>
+                        <span>Software Engineer</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p>"Best collaborative learning platform! The whiteboard and code editor make group projects seamless. Highly recommended!"</p>
+                <div class="testimonial-author">
+                    <img src="https://i.pravatar.cc/100?img=5" alt="Priya">
+                    <div>
+                        <h4>Priya Patel</h4>
+                        <span>Data Science Enthusiast</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section">
+        <h2>💎 Choose Your Plan</h2>
+        <p class="pricing-subtitle">Flexible plans for individuals and organizations</p>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <div class="plan-badge">Free</div>
+                <h3>Starter</h3>
+                <div class="price">
+                    <span class="currency">$</span>
+                    <span class="amount">0</span>
+                    <span class="period">/month</span>
+                </div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> AI Study Group Matching</li>
+                    <li><i class="fas fa-check"></i> Basic Chat & Messaging</li>
+                    <li><i class="fas fa-check"></i> Task Management</li>
+                    <li><i class="fas fa-check"></i> Up to 5 Group Members</li>
+                    <li><i class="fas fa-check"></i> 1GB Cloud Storage</li>
+                </ul>
+                <a href="next.html" class="plan-btn">Get Started</a>
+            </div>
+
+            <div class="pricing-card featured">
+                <div class="plan-badge popular">Most Popular</div>
+                <h3>Premium</h3>
+                <div class="price">
+                    <span class="currency">$</span>
+                    <span class="amount">9.99</span>
+                    <span class="period">/month</span>
+                </div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Everything in Free</li>
+                    <li><i class="fas fa-check"></i> HD Video Conferencing</li>
+                    <li><i class="fas fa-check"></i> Mentorship Access</li>
+                    <li><i class="fas fa-check"></i> Progress Analytics</li>
+                    <li><i class="fas fa-check"></i> Unlimited Group Members</li>
+                    <li><i class="fas fa-check"></i> 50GB Cloud Storage</li>
+                    <li><i class="fas fa-check"></i> Priority Support</li>
+                </ul>
+                <a href="next.html" class="plan-btn">Start Free Trial</a>
+            </div>
+
+            <div class="pricing-card">
+                <div class="plan-badge">Pro</div>
+                <h3>Enterprise</h3>
+                <div class="price">
+                    <span class="currency">$</span>
+                    <span class="amount">29.99</span>
+                    <span class="period">/month</span>
+                </div>
+                <ul class="features-list">
+                    <li><i class="fas fa-check"></i> Everything in Premium</li>
+                    <li><i class="fas fa-check"></i> Code Editor & Whiteboard</li>
+                    <li><i class="fas fa-check"></i> Advanced Calendar</li>
+                    <li><i class="fas fa-check"></i> Custom Branding</li>
+                    <li><i class="fas fa-check"></i> API Access</li>
+                    <li><i class="fas fa-check"></i> Unlimited Storage</li>
+                    <li><i class="fas fa-check"></i> Dedicated Support</li>
+                </ul>
+                <a href="next.html" class="plan-btn">Contact Sales</a>
             </div>
         </div>
     </section>
 
     <!-- Call to Action -->
     <section class="cta" id="cta">
-        <h2>📚 Start Learning Smarter Today!</h2>
-        <a href="next.html" class="btn-glow">Join Now</a>
+        <h2>� Ready to Transform Your Learning Experience?</h2>
+        <p>Join thousands of students and professionals already succeeding with StudyFinder</p>
+        <div class="cta-buttons">
+            <a href="next.html" class="btn-glow"><i class="fas fa-rocket"></i> Start Free Trial</a>
+            <a href="#demo" class="btn-outline"><i class="fas fa-info-circle"></i> Learn More</a>
+        </div>
+        <p class="cta-note">No credit card required • 14-day free trial • Cancel anytime</p>
     </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>StudyFinder</h3>
+                <p>Empowering learners worldwide with AI-powered collaboration tools.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#demo">Demos</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="#">Updates</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="#about">About Us</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Blog</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                    <li><a href="#">Security</a></li>
+                    <li><a href="#">GDPR</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 StudyFinder. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Demo Modal -->
+    <div id="demoModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2 id="demoTitle">Feature Demo</h2>
+            <div class="demo-player">
+                <div class="demo-placeholder">
+                    <i class="fas fa-play-circle"></i>
+                    <p>Demo video will load here</p>
+                    <small>Interactive demo coming soon - Click "Get Started" to try the live platform!</small>
+                </div>
+            </div>
+            <div class="demo-description" id="demoDescription">
+                <p>Experience this feature in action by signing up for a free account.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo modal functionality
+        function showDemo(demoType) {
+            const modal = document.getElementById('demoModal');
+            const title = document.getElementById('demoTitle');
+            const description = document.getElementById('demoDescription');
+            
+            const demos = {
+                'ai-matching': {
+                    title: 'AI-Powered Study Group Matching',
+                    description: 'Our advanced machine learning algorithm analyzes your profile, learning preferences, study schedule, and goals to match you with the perfect study group. See how it works in real-time!'
+                },
+                'video-conference': {
+                    title: 'HD Video Conferencing & Screen Sharing',
+                    description: 'Join or create video rooms with crystal-clear HD quality, screen sharing, recording capabilities, and breakout sessions. Perfect for virtual study sessions and group presentations.'
+                },
+                'collaboration': {
+                    title: 'Real-Time Code Editor & Whiteboard',
+                    description: 'Collaborate on code with syntax highlighting for 50+ languages, live cursors showing teammate activity, and an interactive whiteboard for brainstorming and visual learning.'
+                },
+                'mentorship': {
+                    title: 'Expert Mentorship Program',
+                    description: 'Browse expert mentors by domain, schedule one-on-one sessions, track your progress, and receive personalized guidance to accelerate your learning journey.'
+                },
+                'analytics': {
+                    title: 'Comprehensive Progress Tracking',
+                    description: 'View detailed analytics including study time, completion rates, achievement badges, learning streaks, and personalized insights to optimize your learning strategy.'
+                },
+                'chat': {
+                    title: 'Group Chat & File Sharing',
+                    description: 'Instant messaging with emoji reactions, file attachments, code snippet sharing, message threading, and organized conversations by topic.'
+                }
+            };
+            
+            const demo = demos[demoType];
+            title.textContent = demo.title;
+            description.innerHTML = `<p>${demo.description}</p>`;
+            modal.style.display = 'flex';
+        }
+        
+        // Close modal
+        document.querySelector('.modal-close')?.addEventListener('click', function() {
+            document.getElementById('demoModal').style.display = 'none';
+        });
+        
+        window.addEventListener('click', function(e) {
+            const modal = document.getElementById('demoModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#' && href !== '') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
