@@ -1674,20 +1674,26 @@ process.on('unhandledRejection', (error) => {
 });
 
 // Configure PeerJS Server to use the existing HTTP server
-const peerServer = PeerServer({
-  server: server, // Use the existing HTTP server
-  path: '/peerjs',
-  corsOptions: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  }
-});
-
-console.log(`PeerJS server running on port ${PORT} at path /peerjs`);
+try {
+  const peerServer = PeerServer({
+    server: server, // Use the existing HTTP server
+    path: '/peerjs',
+    corsOptions: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+    }
+  });
+  console.log(`PeerJS server running on port ${PORT} at path /peerjs`);
+} catch (error) {
+  console.error('PeerJS initialization error:', error);
+  console.log('Continuing without PeerJS server');
+}
 
 // after redirect into this,not awaiting live fetched
 
-const wss = new WebSocket.Server({ server });
+try {
+  const wss = new WebSocket.Server({ server });
+  console.log('WebSocket server initialized');
 const VideoRoom = require('./models/VideoRoom');
 const jwt = require('jsonwebtoken');
 
@@ -2645,3 +2651,8 @@ setInterval(() => {
     ws.ping();
   });
 }, 30000);
+
+} catch (error) {
+  console.error('WebSocket initialization error:', error);
+  console.log('Continuing without WebSocket server');
+}
