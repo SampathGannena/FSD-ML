@@ -666,7 +666,7 @@
     async function loadUserData() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/profile', {
+        const response = await fetch('${window.location.origin}/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -686,7 +686,7 @@
     async function loadTasks() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/tasks', {
+        const response = await fetch('${window.location.origin}/api/auth/tasks', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -716,7 +716,7 @@
     async function loadGoals() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/auth/goals', {
+        const response = await fetch('${window.location.origin}/api/auth/goals', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -945,7 +945,7 @@
     async function updateTaskProgress(taskId, progress) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/tasks/${taskId}/progress`, {
+        const response = await fetch(`${window.location.origin}/api/auth/tasks/${taskId}/progress`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -978,7 +978,7 @@
     async function updateGoalProgress(goalId, progress) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/goals/${goalId}/progress`, {
+        const response = await fetch(`${window.location.origin}/api/auth/goals/${goalId}/progress`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1005,7 +1005,7 @@
     async function markTaskComplete(taskId) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/tasks/${taskId}/complete`, {
+        const response = await fetch(`${window.location.origin}/api/auth/tasks/${taskId}/complete`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1030,7 +1030,7 @@
     async function markGoalAchieved(goalId) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/goals/${goalId}/achieve`, {
+        const response = await fetch(`${window.location.origin}/api/auth/goals/${goalId}/achieve`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1060,7 +1060,7 @@
         goal.milestones[milestoneIndex].completed = completed;
 
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/goals/${goalId}/milestones`, {
+        const response = await fetch(`${window.location.origin}/api/auth/goals/${goalId}/milestones`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

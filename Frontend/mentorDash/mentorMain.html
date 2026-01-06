@@ -732,7 +732,7 @@
 
       // First load mentor profile to get mentorData
       try {
-        const profileResponse = await fetch('http://localhost:5000/api/mentor/profile', {
+        const profileResponse = await fetch('${window.location.origin}/api/mentor/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -794,7 +794,7 @@
         // Fetch detailed stats for each group
         const groupPromises = mentorGroups.map(async (groupName) => {
           try {
-            const statsResponse = await fetch(`http://localhost:5000/api/groups/${groupName}/stats`, {
+            const statsResponse = await fetch(`${window.location.origin}/api/groups/${groupName}/stats`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -908,7 +908,7 @@
         }
 
         // Fetch all groups
-        const response = await fetch('http://localhost:5000/api/groups/all', {
+        const response = await fetch('${window.location.origin}/api/groups/all', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1031,7 +1031,7 @@
     async function joinGroup(groupName) {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch(`http://localhost:5000/api/groups/${groupName}/join`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${groupName}/join`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

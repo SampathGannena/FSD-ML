@@ -44,7 +44,7 @@
           const email = document.getElementById('email').value;
       
           try {
-            const res = await fetch('http://localhost:5000/api/mentor/forgot-password', {
+            const res = await fetch('${window.location.origin}/api/mentor/forgot-password', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email })

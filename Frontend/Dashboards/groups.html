@@ -3648,7 +3648,7 @@
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Fetch session details to get room code from server
-        const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}`, {
+        const response = await fetch(`${window.location.origin}/api/sessions/${sessionId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -3732,7 +3732,7 @@
       // Try to fetch real group data from API
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(selectedGroupName)}`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(selectedGroupName)}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -3845,7 +3845,7 @@
           return;
         }
         
-        const response = await fetch('http://localhost:5000/api/profile', {
+        const response = await fetch('${window.location.origin}/api/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -4020,7 +4020,7 @@
       if (!messageId) return;
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/messages/${messageId}/react`, {
+        const response = await fetch(`${window.location.origin}/api/messages/${messageId}/react`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -4043,7 +4043,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/messages/${messageId}/reply`, {
+        const response = await fetch(`${window.location.origin}/api/messages/${messageId}/reply`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -4066,7 +4066,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/messages/${messageId}`, {
+        const response = await fetch(`${window.location.origin}/api/messages/${messageId}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -4088,7 +4088,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/messages/${messageId}`, {
+        const response = await fetch(`${window.location.origin}/api/messages/${messageId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -4106,7 +4106,7 @@
       if (!messageId) return;
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/messages/${messageId}/pin`, {
+        const response = await fetch(`${window.location.origin}/api/messages/${messageId}/pin`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -4122,7 +4122,7 @@
     // Load chat history from API
     async function loadChatHistory(groupName) {
       try {
-        const response = await fetch(`http://localhost:5000/api/messages/${encodeURIComponent(groupName)}`);
+        const response = await fetch(`${window.location.origin}/api/messages/${encodeURIComponent(groupName)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.messages && data.messages.length > 0) {
@@ -5702,10 +5702,10 @@
         submitBtn.disabled = true;
         
         // Send to backend
-        console.log('Sending request to:', 'http://localhost:5000/api/sessions/create');
+        console.log('Sending request to:', '${window.location.origin}/api/sessions/create');
         console.log('Request data:', JSON.stringify(sessionData, null, 2));
         
-        fetch('http://localhost:5000/api/sessions/create', {
+        fetch('${window.location.origin}/api/sessions/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -6036,7 +6036,7 @@
       
       try {
         console.log('Making upload request...');
-        const response = await fetch('http://localhost:5000/api/group-upload', {
+        const response = await fetch('${window.location.origin}/api/group-upload', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -6097,7 +6097,7 @@
           return;
         }
         
-        const response = await fetch(`http://localhost:5000/api/sessions/group/${encodeURIComponent(groupName)}`, {
+        const response = await fetch(`${window.location.origin}/api/sessions/group/${encodeURIComponent(groupName)}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -6249,7 +6249,7 @@
       try {
         console.log('Loading files for group:', groupName);
         
-        const response = await fetch(`http://localhost:5000/api/group-files/${groupName}`);
+        const response = await fetch(`${window.location.origin}/api/group-files/${groupName}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -6282,7 +6282,7 @@
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/files/${currentGroupId}`);
+        const response = await fetch(`${window.location.origin}/api/files/${currentGroupId}`);
         const files = await response.json();
         
         console.log(`Found ${files.length} files for group:`, currentGroupId);
@@ -6370,7 +6370,7 @@
         try {
           console.log('Loading group files (chat version):', groupName);
           
-          const response = await fetch(`http://localhost:5000/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
           
           if (response.ok) {
             const data = await response.json();
@@ -6423,7 +6423,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/group-files/${encodeURIComponent(groupName)}`, {
+        const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -6572,7 +6572,7 @@
 
     function downloadGroupFile(filename, originalname) {
       // Use the proper download API endpoint that handles file serving
-      const downloadUrl = `http://localhost:5000/api/download/${encodeURIComponent(filename)}`;
+      const downloadUrl = `${window.location.origin}/api/download/${encodeURIComponent(filename)}`;
       
       // Create a hidden link and trigger download
       const link = document.createElement('a');
@@ -6586,7 +6586,7 @@
     async function loadGroupStats(groupName) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/groups/${groupName}/stats`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${groupName}/stats`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -6665,7 +6665,7 @@
         socket.close();
       }
 
-      socket = new WebSocket('ws://localhost:5000');
+      socket = new WebSocket('${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}');
 
       socket.onopen = () => {
         socket.send(JSON.stringify({ type: 'join', group: groupName }));
@@ -6765,7 +6765,7 @@
       // Save selection to backend
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/save-current-group', {
+        const response = await fetch('${window.location.origin}/api/save-current-group', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -6804,7 +6804,7 @@
         }
         
         console.log("📡 Fetching from: http://localhost:5000/api/match-groups");
-        const response = await fetch('http://localhost:5000/api/match-groups', {
+        const response = await fetch('${window.location.origin}/api/match-groups', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -6867,7 +6867,7 @@
     async function updateMemberStatus(groupName, status) {
       try {
         const token = localStorage.getItem('token');
-        await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(groupName)}/status`, {
+        await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/status`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -6888,7 +6888,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(groupName)}/leave`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/leave`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -6913,7 +6913,7 @@
     async function recordGroupActivity(groupName, action, description) {
       try {
         const token = localStorage.getItem('token');
-        await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(groupName)}/activity`, {
+        await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/activity`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -6930,7 +6930,7 @@
     async function fetchGroupMembers(groupName) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(groupName)}/members`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/members`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -6949,7 +6949,7 @@
     async function fetchGroupActivity(groupName, limit = 20) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/groups/${encodeURIComponent(groupName)}/activity?limit=${limit}`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/activity?limit=${limit}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -7204,7 +7204,7 @@
         console.log('✅ Starting upload process...');
         console.log('Upload URL: http://localhost:5000/api/group-upload');
         
-        fetch('http://localhost:5000/api/group-upload', {
+        fetch('${window.location.origin}/api/group-upload', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -7483,7 +7483,7 @@
         try {
           console.log('Loading group files (chat version):', groupName);
           
-          const response = await fetch(`http://localhost:5000/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
           
           if (response.ok) {
             const data = await response.json();
@@ -7542,7 +7542,7 @@
         try {
           console.log('Loading group files (chat version):', groupName);
           
-          const response = await fetch(`http://localhost:5000/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
           
           if (response.ok) {
             const data = await response.json();
@@ -7560,7 +7560,7 @@
 
       function appendFileMessage(file) {
           const msg = document.createElement('p');
-          msg.innerHTML = `<a href="http://localhost:5000/uploads/${file.filename}" target="_blank">📎 ${file.originalname}</a>`;
+          msg.innerHTML = `<a href="${window.location.origin}/uploads/${file.filename}" target="_blank">📎 ${file.originalname}</a>`;
           chatBody.appendChild(msg);
           chatBody.scrollTop = chatBody.scrollHeight;
       }

@@ -364,7 +364,7 @@
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/auth/session/${sessionId}`, {
+        const response = await fetch(`${window.location.origin}/api/auth/session/${sessionId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -419,7 +419,7 @@
 
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/auth/session-feedback/${sessionId}`, {
+        const response = await fetch(`${window.location.origin}/api/auth/session-feedback/${sessionId}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

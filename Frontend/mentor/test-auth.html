@@ -122,7 +122,7 @@
             const password = document.getElementById('test-password').value;
 
             try {
-                const response = await fetch('http://localhost:5000/api/mentor/signin', {
+                const response = await fetch('${window.location.origin}/api/mentor/signin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ domainId, email, password })
@@ -163,7 +163,7 @@
             }
 
             try {
-                const response = await fetch('http://localhost:5000/api/mentor/profile', {
+                const response = await fetch('${window.location.origin}/api/mentor/profile', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

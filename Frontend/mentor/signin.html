@@ -57,7 +57,7 @@
             const data = { domainId, email, password };
 
             try {
-                const res = await fetch('http://localhost:5000/api/mentor/signin', {
+                const res = await fetch('${window.location.origin}/api/mentor/signin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),

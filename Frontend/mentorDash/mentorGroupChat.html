@@ -580,7 +580,7 @@
 
     async function loadMentorProfile(token) {
       try {
-        const response = await fetch('http://localhost:5000/api/mentor/profile', {
+        const response = await fetch('${window.location.origin}/api/mentor/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -602,7 +602,7 @@
     async function loadGroupData(groupName, token) {
       try {
         // Load group stats to get members
-        const statsResponse = await fetch(`http://localhost:5000/api/groups/${groupName}/stats`, {
+        const statsResponse = await fetch(`${window.location.origin}/api/groups/${groupName}/stats`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -637,7 +637,7 @@
 
     async function loadMessages(groupName, token) {
       try {
-        const response = await fetch(`http://localhost:5000/api/groups/${groupName}/messages`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${groupName}/messages`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -702,7 +702,7 @@
       const token = localStorage.getItem('mentorToken');
       
       // Connect without token in URL (server doesn't parse it)
-      ws = new WebSocket(`ws://localhost:5000`);
+      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}://${window.location.host}`);
       
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -771,7 +771,7 @@
               <span class="message-sender">${message.sender}</span>
               <span class="message-time">${messageTime}</span>
             </div>
-            <div class="file-message" onclick="window.open('http://localhost:5000${message.fileUrl}', '_blank')">
+            <div class="file-message" onclick="window.open('${window.location.origin}${message.fileUrl}', '_blank')">
               <i class="fas fa-file file-icon"></i>
               <div class="file-details">
                 <div class="file-name">${message.fileName || 'File'}</div>
@@ -816,7 +816,7 @@
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/groups/${currentGroup.name}/messages`, {
+        const response = await fetch(`${window.location.origin}/api/groups/${currentGroup.name}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
