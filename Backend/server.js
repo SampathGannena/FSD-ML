@@ -20,9 +20,13 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const File = require('./models/File'); // This saves files to the 'uploads' folder
 const { PeerServer } = require('peer');
+const securityConfig = require('./config/security');
 
 dotenv.config();
 const app = express();
+
+// Apply security middleware
+securityConfig(app);
 
 // Serve static files from the entire Frontend folder
 app.use(express.static(path.join(__dirname, '../Frontend')));
@@ -48,7 +52,16 @@ app.get('/', (req, res) => {
 });
 app.use(bodyParser.json());
 
-app.use(cors());
+// Configure CORS
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL, 'https://your-frontend-domain.com']
+    : ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:5500'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Handle Chrome DevTools well-known endpoint to suppress CSP warning

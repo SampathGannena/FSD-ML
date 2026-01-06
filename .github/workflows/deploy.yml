@@ -1,0 +1,42 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install backend dependencies
+        run: |
+          cd Backend
+          npm install
+      
+      - name: Deploy to Render/Railway
+        run: echo "Backend deployment triggered"
+        # Add your backend deployment commands here
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to Vercel/Netlify
+        run: echo "Frontend deployment triggered"
+        # Add your frontend deployment commands here
