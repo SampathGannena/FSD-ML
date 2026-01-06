@@ -732,7 +732,7 @@
 
       // First load mentor profile to get mentorData
       try {
-        const profileResponse = await fetch('${window.location.origin}/api/mentor/profile', {
+        const profileResponse = await fetch(`${window.location.origin}/api/mentor/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -908,7 +908,7 @@
         }
 
         // Fetch all groups
-        const response = await fetch('${window.location.origin}/api/groups/all', {
+        const response = await fetch(`${window.location.origin}/api/groups/all`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

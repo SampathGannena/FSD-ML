@@ -3845,7 +3845,7 @@
           return;
         }
         
-        const response = await fetch('${window.location.origin}/api/profile', {
+        const response = await fetch(`${window.location.origin}/api/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -5702,10 +5702,10 @@
         submitBtn.disabled = true;
         
         // Send to backend
-        console.log('Sending request to:', '${window.location.origin}/api/sessions/create');
+        console.log('Sending request to:', `${window.location.origin}/api/sessions/create`);
         console.log('Request data:', JSON.stringify(sessionData, null, 2));
         
-        fetch('${window.location.origin}/api/sessions/create', {
+        fetch(`${window.location.origin}/api/sessions/create`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -6036,7 +6036,7 @@
       
       try {
         console.log('Making upload request...');
-        const response = await fetch('${window.location.origin}/api/group-upload', {
+        const response = await fetch(`${window.location.origin}/api/group-upload`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -6765,7 +6765,7 @@
       // Save selection to backend
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/save-current-group', {
+        const response = await fetch(`${window.location.origin}/api/save-current-group`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -6804,7 +6804,7 @@
         }
         
         console.log("📡 Fetching from: http://localhost:5000/api/match-groups");
-        const response = await fetch('${window.location.origin}/api/match-groups', {
+        const response = await fetch(`${window.location.origin}/api/match-groups`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -7204,7 +7204,7 @@
         console.log('✅ Starting upload process...');
         console.log('Upload URL: http://localhost:5000/api/group-upload');
         
-        fetch('${window.location.origin}/api/group-upload', {
+        fetch(`${window.location.origin}/api/group-upload`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

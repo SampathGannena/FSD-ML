@@ -447,7 +447,7 @@
           return;
         }
         
-        const response = await fetch('${window.location.origin}/api/auth/mentors/available', {
+        const response = await fetch(`${window.location.origin}/api/auth/mentors/available`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -640,7 +640,7 @@
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/mentorship/request', {
+        const response = await fetch(`${window.location.origin}/api/auth/mentorship/request`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -782,7 +782,7 @@
 
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/doubts/submit', {
+        const response = await fetch(`${window.location.origin}/api/auth/doubts/submit`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -825,7 +825,7 @@
     async function loadDoubts() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/doubts', {
+        const response = await fetch(`${window.location.origin}/api/auth/doubts`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1148,7 +1148,7 @@
         }
 
         // Fetch real notifications from API
-        const response = await fetch('${window.location.origin}/api/auth/notifications', {
+        const response = await fetch(`${window.location.origin}/api/auth/notifications`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

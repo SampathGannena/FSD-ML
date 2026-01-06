@@ -666,7 +666,7 @@
     async function loadUserData() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/profile', {
+        const response = await fetch(`${window.location.origin}/api/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -686,7 +686,7 @@
     async function loadTasks() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/tasks', {
+        const response = await fetch(`${window.location.origin}/api/auth/tasks`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -716,7 +716,7 @@
     async function loadGoals() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('${window.location.origin}/api/auth/goals', {
+        const response = await fetch(`${window.location.origin}/api/auth/goals`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

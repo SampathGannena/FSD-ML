@@ -580,7 +580,7 @@
 
     async function loadMentorProfile(token) {
       try {
-        const response = await fetch('${window.location.origin}/api/mentor/profile', {
+        const response = await fetch(`${window.location.origin}/api/mentor/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -771,7 +771,7 @@
               <span class="message-sender">${message.sender}</span>
               <span class="message-time">${messageTime}</span>
             </div>
-            <div class="file-message" onclick="window.open('${window.location.origin}${message.fileUrl}', '_blank')">
+            <div class="file-message" onclick="window.open(`${window.location.origin}${message.fileUrl}`, '_blank')">
               <i class="fas fa-file file-icon"></i>
               <div class="file-details">
                 <div class="file-name">${message.fileName || 'File'}</div>

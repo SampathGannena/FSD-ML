@@ -1037,7 +1037,7 @@
     async function loadMentorProfile() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/profile', {
+        const response = await fetch(`${window.location.origin}/api/mentor/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1079,7 +1079,7 @@
     async function loadRequests() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/requests', {
+        const response = await fetch(`${window.location.origin}/api/mentor/requests`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1193,7 +1193,7 @@
     async function loadMentees() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/mentees', {
+        const response = await fetch(`${window.location.origin}/api/mentor/mentees`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1355,7 +1355,7 @@
       
       try {
         const token = localStorage.getItem('mentorToken');
-        let url = '${window.location.origin}/api/mentor/sessions';
+        let url = `${window.location.origin}/api/mentor/sessions`;
         
         // Apply filters
         const params = new URLSearchParams();
@@ -1556,7 +1556,7 @@
     async function loadDoubts() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/doubts', {
+        const response = await fetch(`${window.location.origin}/api/mentor/doubts`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1639,13 +1639,13 @@
         
         // Fetch recent data from multiple sources
         const [requestsRes, sessionsRes, doubtsRes] = await Promise.all([
-          fetch('${window.location.origin}/api/mentor/requests', {
+          fetch(`${window.location.origin}/api/mentor/requests`, {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
           }),
-          fetch('${window.location.origin}/api/mentor/sessions', {
+          fetch(`${window.location.origin}/api/mentor/sessions`, {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
           }),
-          fetch('${window.location.origin}/api/mentor/doubts', {
+          fetch(`${window.location.origin}/api/mentor/doubts`, {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
           })
         ]);
@@ -2157,7 +2157,7 @@
     async function updateNotificationBadge() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/notifications?limit=1&unreadOnly=true', {
+        const response = await fetch(`${window.location.origin}/api/mentor/notifications?limit=1&unreadOnly=true`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -2181,7 +2181,7 @@
         const token = localStorage.getItem('mentorToken');
         console.log('Loading notifications with token:', token ? 'exists' : 'missing');
         
-        const response = await fetch('${window.location.origin}/api/mentor/notifications?limit=50', {
+        const response = await fetch(`${window.location.origin}/api/mentor/notifications?limit=50`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -2316,7 +2316,7 @@
     async function markAllNotificationsAsRead() {
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/notifications/read-all', {
+        const response = await fetch(`${window.location.origin}/api/mentor/notifications/read-all`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -2735,7 +2735,7 @@
       
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/tasks', {
+        const response = await fetch(`${window.location.origin}/api/mentor/tasks`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -2888,7 +2888,7 @@
       
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/goals', {
+        const response = await fetch(`${window.location.origin}/api/mentor/goals`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -3599,7 +3599,7 @@
       
       try {
         const token = localStorage.getItem('mentorToken');
-        const response = await fetch('${window.location.origin}/api/mentor/sessions', {
+        const response = await fetch(`${window.location.origin}/api/mentor/sessions`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

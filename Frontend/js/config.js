@@ -4,11 +4,11 @@
 const CONFIG = {
     // Automatically detect environment
     API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? '${window.location.origin}/api'  // Development
+        ? 'http://localhost:5000/api'  // Development
         : 'https://fsd-ml-4knj.onrender.com/api',  // Production
     
     WS_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? '${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}'  // Development
+        ? 'ws://localhost:5000'  // Development
         : 'wss://fsd-ml-4knj.onrender.com',  // Production
     
     // Timeout settings
