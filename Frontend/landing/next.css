@@ -60,6 +60,33 @@
     box-shadow: 0 0 15px #ff6b00;
 }
 
+/* Features Section Override for next.html */
+.features .feature {
+    text-align: center;
+}
+
+.features .feature img {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.features .feature:hover img {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.features .feature h3 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+}
+
+.features .feature p {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .role-container {
