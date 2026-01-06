@@ -858,7 +858,7 @@ body {
 }
 
 .pricing-card {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(15px);
     border: 2px solid rgba(255, 107, 0, 0.3);
     border-radius: 25px;
@@ -866,74 +866,47 @@ body {
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
-    transform-style: preserve-3d;
-    perspective: 1000px;
 }
 
 .pricing-card::before {
     content: '';
     position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(135deg, #ff6b00, #ff4b2b, #ff6b00);
-    border-radius: 25px;
-    opacity: 0;
-    z-index: -1;
-    transition: opacity 0.5s ease;
-}
-
-.pricing-card::after {
-    content: '';
-    position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at 50% 0%, rgba(255, 107, 0, 0.2) 0%, transparent 70%);
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.1), rgba(255, 75, 43, 0.05));
     opacity: 0;
     transition: opacity 0.5s ease;
 }
 
 .pricing-card:hover::before {
     opacity: 1;
-    animation: borderRotate 3s linear infinite;
-}
-
-.pricing-card:hover::after {
-    opacity: 1;
-}
-
-@keyframes borderRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 .pricing-card.featured {
-    transform: scale(1.08);
+    transform: scale(1.05);
     border-color: #ff6b00;
-    background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(255, 75, 43, 0.15));
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.15), rgba(255, 75, 43, 0.1));
     box-shadow: 
-        0 30px 80px rgba(255, 107, 0, 0.4),
-        inset 0 0 50px rgba(255, 107, 0, 0.1);
+        0 25px 70px rgba(255, 107, 0, 0.4),
+        inset 0 0 40px rgba(255, 107, 0, 0.1);
     z-index: 2;
 }
 
-.pricing-card.featured::before {
-    opacity: 0.7;
-}
-
 .pricing-card:hover {
-    transform: translateY(-20px) scale(1.03) rotateX(2deg);
+    transform: translateY(-15px) scale(1.02);
     box-shadow: 
-        0 30px 70px rgba(255, 107, 0, 0.5),
-        inset 0 0 30px rgba(255, 107, 0, 0.1);
+        0 25px 60px rgba(255, 107, 0, 0.4),
+        inset 0 0 20px rgba(255, 107, 0, 0.05);
     border-color: #ff6b00;
 }
 
 .pricing-card.featured:hover {
-    transform: translateY(-20px) scale(1.1) rotateX(2deg);
+    transform: translateY(-15px) scale(1.08);
+    box-shadow: 
+        0 30px 80px rgba(255, 107, 0, 0.5),
+        inset 0 0 50px rgba(255, 107, 0, 0.15);
 }
 
 .plan-badge {
@@ -1020,7 +993,14 @@ body {
 }
 
 .features-list {
-    list-style4px 0;
+    list-style: none;
+    padding: 0;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.features-list li {
+    padding: 14px 0;
     color: rgba(255, 255, 255, 0.85);
     display: flex;
     align-items: center;
@@ -1038,61 +1018,63 @@ body {
     color: #ff6b00;
     font-size: 1.2rem;
     min-width: 20px;
-    filter: drop-shadow(0 0 5px rgba(255, 107, 0, 0.5))
-    align-items: center;
-    gap: 12px;
+    filter: drop-shadow(0 0 5px rgba(255, 107, 0, 0.5));
 }
-6px;
+
+.plan-btn {
+    display: block;
+    width: 100%;
+    padding: 18px;
     background: linear-gradient(135deg, #ff6b00, #ff4b2b);
     color: #fff;
     text-decoration: none;
-    border-radius: 12px;
+    border-radius: 15px;
     font-weight: 800;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     transition: all 0.4s ease;
-    margin-top: 25px;
+    margin-top: 30px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 5px 20px rgba(255, 107, 0, 0.4);
+    box-shadow: 0 8px 25px rgba(255, 107, 0, 0.5);
+    border: 2px solid transparent;
 }
 
 .plan-btn::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.5s ease;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease, height 0.6s ease;
 }
 
 .plan-btn:hover::before {
-    left: 100%;
+    width: 300px;
+    height: 300px;
 }
 
 .plan-btn:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(255, 107, 0, 0.6);
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(255, 107, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .pricing-card.featured .plan-btn {
     background: linear-gradient(135deg, #fff, #ff6b00);
     color: #000;
-    box-shadow: 0 8px 30px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 35px rgba(255, 255, 255, 0.4);
+    font-weight: 900;
 }
 
 .pricing-card.featured .plan-btn:hover {
-    box-shadow: 0 15px 50px rgba(255, 255, 255
-    border-radius: 10px;
-    font-weight: 700;
-    transition: all 0.3s ease;
-    margin-top: 20px;
-}
-
-.plan-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 30px rgba(255, 107, 0, 0.5);
+    box-shadow: 0 15px 50px rgba(255, 255, 255, 0.6);
+    transform: translateY(-5px) scale(1.05);
 }
 
 /* Enhanced CTA */
@@ -1149,61 +1131,31 @@ body {
 
 /* Footer */
 .footer {
-    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+    background: #0a0a0a;
     padding: 60px 50px 20px;
     color: rgba(255, 255, 255, 0.7);
-    position: relative;
-    overflow: hidden;
-}
-
-.footer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #ff6b00, transparent);
 }
 
 .footer-content {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 50px;
+    gap: 40px;
     max-width: 1400px;
     margin: 0 auto 40px;
-    position: relative;
-    z-index: 1;
 }
 
 .footer-section h3 {
     color: #fff;
-    font-size: 1.6rem;
-    margin-bottom: 25px;
-    background: linear-gradient(135deg, #fff, #ff6b00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-weight: 800;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    font-weight: 700;
 }
 
 .footer-section h4 {
     color: #fff;
-    font-size: 1.15rem;
-    margin-bottom: 20px;
-    font-weight: 700;
-    position: relative;
-    padding-bottom: 10px;
-}
-
-.footer-section h4::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 40px;
-    height: 2px;
-    background: linear-gradient(90deg, #ff6b00, transparent);
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    font-weight: 600;
 }
 
 .footer-section p {
@@ -1214,111 +1166,52 @@ body {
 .social-links {
     display: flex;
     gap: 15px;
-    margin-top: 10px;
 }
 
 .social-links a {
-    width: 45px;
-    height: 45px;
-    background: rgba(255, 107, 0, 0.15);
-    border: 2px solid rgba(255, 107, 0, 0.3);
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 107, 0, 0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #ff6b00;
-    font-size: 1.1rem;
-    transition: all 0.4s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.social-links a::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, #ff6b00, #ff4b2b);
-    border-radius: 50%;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-}
-
-.social-links a i {
-    position: relative;
-    z-index: 1;
-}
-
-.social-links a:hover::before {
-    opacity: 1;
+    font-size: 1rem;
+    transition: all 0.3s ease;
 }
 
 .social-links a:hover {
+    background: #ff6b00;
     color: #fff;
-    border-color: #ff6b00;
-    transform: translateY(-5px) scale(1.1);
-    box-shadow: 0 10px 25px rgba(255, 107, 0, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(255, 107, 0, 0.4);
 }
 
 .footer-section ul {
     list-style: none;
     padding: 0;
-    margin: 0;
 }
 
 .footer-section ul li {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .footer-section ul a {
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
     transition: all 0.3s ease;
-    display: inline-block;
-    position: relative;
-    padding-left: 15px;
-}
-
-.footer-section ul a::before {
-    content: '▹';
-    position: absolute;
-    left: 0;
-    color: #ff6b00;
-    opacity: 0;
-    transform: translateX(-5px);
-    transition: all 0.3s ease;
-}
-
-.footer-section ul a:hover::before {
-    opacity: 1;
-    transform: translateX(0);
 }
 
 .footer-section ul a:hover {
     color: #ff6b00;
-    padding-left: 20px;
+    padding-left: 5px;
 }
 
 .footer-bottom {
     text-align: center;
     padding-top: 30px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    position: relative;
-}
-
-.footer-bottom::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #ff6b00, transparent);
-}
-
-.footer-bottom p {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.95rem;
 }
 
 /* Demo Modal */
