@@ -866,6 +866,8 @@ body {
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .pricing-card::before {
@@ -997,6 +999,7 @@ body {
     padding: 0;
     margin: 30px 0;
     text-align: left;
+    flex-grow: 1;
 }
 
 .features-list li {
@@ -1035,7 +1038,7 @@ body {
     letter-spacing: 1px;
     text-align: center;
     transition: all 0.4s ease;
-    margin-top: 25px;
+    margin-top: auto;
     position: relative;
     overflow: hidden;
     box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
