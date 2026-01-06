@@ -4,7 +4,7 @@
   "description": "Full Stack Development ML Application",
   "main": "Backend/server.js",
   "scripts": {
-    "start": "cd Backend && npm install && npm start",
+    "start": "node Backend/server.js",
     "dev": "cd Backend && npm run dev"
   },
   "dependencies": {
