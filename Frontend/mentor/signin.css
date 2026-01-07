@@ -137,3 +137,41 @@ body {
     margin-top: 5px;
     margin-bottom: 10px;
 }
+
+/* ==================== RESPONSIVE STYLES ==================== */
+@media (max-width: 768px) {
+    body { padding: 20px; height: auto; min-height: 100vh; }
+    .container { width: 100%; max-width: 500px; flex-direction: column; padding: 30px 20px; }
+    .welcome-panel { width: 100%; padding: 20px 10px; border-right: none; border-bottom: 2px solid rgba(255, 255, 255, 0.2); margin-bottom: 20px; }
+    .welcome-panel h1 { font-size: 22px; }
+    .welcome-panel p { font-size: 13px; }
+    .welcome-image { max-width: 120px; }
+    .signin-box { width: 100%; padding: 20px 10px; }
+    .input-group { margin-top: 25px; }
+    .input-group input { padding: 14px 12px; font-size: 16px; }
+    .btn { padding: 14px 12px; font-size: 16px; min-height: 48px; }
+}
+
+@media (max-width: 480px) {
+    body { padding: 10px; }
+    .container { padding: 25px 15px; }
+    .welcome-panel h1 { font-size: 20px; }
+    .welcome-image { max-width: 100px; }
+    .signin-box h2 { font-size: 18px; }
+    .domain-note { font-size: 11px; }
+}
+
+@media (max-width: 360px) {
+    .container { padding: 20px 12px; }
+    .welcome-panel h1 { font-size: 18px; }
+    .signin-box h2 { font-size: 16px; }
+    .input-group input { font-size: 14px; padding: 12px 10px; }
+    .btn { font-size: 14px; padding: 12px 10px; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    body { height: auto; padding: 10px; }
+    .container { flex-direction: row; max-width: 700px; }
+    .welcome-panel { width: 35%; border-right: 2px solid rgba(255, 255, 255, 0.2); border-bottom: none; margin-bottom: 0; }
+    .signin-box { width: 65%; }
+}

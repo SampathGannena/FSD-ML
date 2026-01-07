@@ -104,3 +104,34 @@ select {
 .result-container p {
     margin: 5px 0;
 }
+
+/* ==================== RESPONSIVE STYLES ==================== */
+@media (max-width: 768px) {
+    body { padding: 20px; height: auto; min-height: 100vh; }
+    .form-container { width: 90%; max-width: 400px; padding: 25px; }
+    h2 { font-size: 20px; }
+    p { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+    body { padding: 10px; }
+    .form-container { width: 95%; padding: 20px; }
+    h2 { font-size: 18px; }
+    label { font-size: 14px; }
+    select, input[type="text"] { padding: 8px; font-size: 14px; }
+    .btn { padding: 10px; font-size: 14px; min-height: 44px; }
+}
+
+@media (max-width: 360px) {
+    .form-container { padding: 15px; }
+    h2 { font-size: 16px; }
+    p { font-size: 12px; }
+    label { font-size: 12px; }
+    select { padding: 6px; font-size: 12px; }
+    .btn { padding: 8px; font-size: 12px; }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+    body { height: auto; padding: 10px; }
+    .form-container { max-width: 500px; padding: 15px; }
+}

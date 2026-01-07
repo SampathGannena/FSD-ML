@@ -450,4 +450,33 @@
       width: 100%;
     }
   }
-  
+  /* Enhanced responsive styles */
+  @media (max-width: 1024px) {
+    .navbar { padding: 12px 30px; }
+    .stats-container { grid-template-columns: repeat(2, 1fr); }
+    .cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  }
+
+  @media (max-width: 480px) {
+    body { padding-top: 70px; }
+    .navbar { padding: 10px 20px; height: auto; }
+    .logo h1 { font-size: 1.2rem; }
+    .logo img { width: 50px; height: 50px; }
+    .stats-container { grid-template-columns: 1fr; gap: 15px; }
+    .stat-card { padding: 15px; }
+    .stat-value { font-size: 1.8rem; }
+    .cards-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 360px) {
+    .navbar { padding: 8px 15px; }
+    .logo h1 { font-size: 1.1rem; }
+    .logo img { width: 45px; height: 45px; }
+    .stat-card { padding: 12px; }
+    .stat-value { font-size: 1.5rem; }
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { padding-top: 60px; }
+    .navbar { padding: 8px 20px; }
+  }  

@@ -475,6 +475,31 @@
         font-size: 12px;
       }
     }
+
+    /* Additional responsive styles */
+    @media (max-width: 480px) {
+      .whiteboard-header { padding: 10px 12px; }
+      .header-left { gap: 8px; }
+      .back-btn { padding: 6px 10px; font-size: 14px; }
+      .group-name { font-size: 14px; }
+      .header-btn { padding: 5px 10px; font-size: 11px; }
+      .toolbar { padding: 12px 6px; }
+      .tool-btn { width: 40px; height: 40px; font-size: 16px; }
+      .participants-panel { width: 100%; }
+      .participant-item { font-size: 12px; }
+    }
+
+    @media (max-width: 360px) {
+      .whiteboard-header { padding: 8px 10px; flex-direction: column; gap: 10px; }
+      .group-name { font-size: 13px; }
+      .toolbar { padding: 10px 5px; gap: 5px; }
+      .tool-btn { width: 36px; height: 36px; font-size: 14px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 500px) {
+      .whiteboard-header { padding: 8px 15px; }
+      .toolbar { padding: 8px; }
+    }
   </style>
 </head>
 <body>

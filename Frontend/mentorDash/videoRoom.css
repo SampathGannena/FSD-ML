@@ -579,3 +579,34 @@ body {
     display: none;
   }
 }
+/* Enhanced responsive styles */
+@media (max-width: 1024px) {
+  .room-header { padding: 10px 20px; }
+  .room-info h1 { font-size: 1.1rem; }
+  .video-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .room-header { padding: 8px 15px; flex-direction: column; gap: 10px; }
+  .room-info h1 { font-size: 1rem; }
+  .room-code { font-size: 0.75rem; }
+  #session-timer { font-size: 1rem; }
+  .btn-icon { width: 36px; height: 36px; }
+  .control-btn { padding: 8px 12px; font-size: 13px; }
+  .controls-bar { gap: 6px; padding: 10px; }
+  .chat-input { padding: 8px 12px; font-size: 14px; }
+}
+
+@media (max-width: 360px) {
+  .room-header { padding: 6px 12px; }
+  .room-info h1 { font-size: 0.9rem; }
+  .btn-icon { width: 32px; height: 32px; font-size: 14px; }
+  .control-btn { padding: 6px 10px; font-size: 12px; }
+  .controls-bar { padding: 8px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .room-header { padding: 6px 15px; }
+  .controls-bar { padding: 8px; gap: 6px; }
+  .room-sidebar { top: 50px; bottom: 60px; }
+}

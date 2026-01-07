@@ -147,3 +147,37 @@ body {
   color: #ff9f0a;
   cursor: pointer;
 }
+
+/* ==================== RESPONSIVE STYLES ==================== */
+@media (max-width: 1024px) {
+  .sidebar { width: 15rem; }
+  .main-content { padding: 1rem; }
+}
+
+@media (max-width: 768px) {
+  body { flex-direction: column; height: auto; min-height: 100vh; }
+  .container { flex-direction: column; }
+  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #2a2a2a; max-height: 200px; }
+  .main-content { padding: 0.75rem; }
+  .student-info h2 { font-size: 1.25rem; }
+  .chat-container { height: 400px; }
+  .chat-input-container { padding: 0.5rem; }
+}
+
+@media (max-width: 480px) {
+  .sidebar { padding: 0.75rem; }
+  .sidebar-title { font-size: 14px; }
+  .group-item { padding-bottom: 0.25rem; }
+  .student-btn { padding: 0.5rem; font-size: 14px; }
+  .main-content { padding: 0.5rem; }
+  .student-info h2 { font-size: 1.1rem; }
+  .chat-container { height: 300px; }
+  .chat-input { padding: 0.5rem 1rem; font-size: 14px; }
+}
+
+@media (max-width: 360px) {
+  .sidebar-title { font-size: 12px; }
+  .student-btn { padding: 0.4rem; font-size: 12px; }
+  .student-info h2 { font-size: 1rem; }
+  .chat-container { height: 250px; }
+}

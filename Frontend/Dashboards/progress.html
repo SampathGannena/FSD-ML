@@ -559,6 +559,33 @@
         justify-content: center;
       }
     }
+
+    /* Additional responsive enhancements */
+    @media (max-width: 480px) {
+      .container { padding: 20px 15px; }
+      .header { padding: 12px 15px; }
+      .logo { font-size: 20px; }
+      .btn-back { padding: 8px 15px; font-size: 14px; }
+      .page-title { font-size: 24px; }
+      .page-subtitle { font-size: 14px; }
+      .stat-card { padding: 15px; }
+      .tab { padding: 10px 15px; font-size: 14px; }
+    }
+
+    @media (max-width: 360px) {
+      .container { padding: 15px 10px; }
+      .header { padding: 10px 12px; }
+      .logo { font-size: 18px; }
+      .btn-back { padding: 6px 12px; font-size: 13px; }
+      .page-title { font-size: 22px; }
+      .stat-card { padding: 12px; }
+      .tab { padding: 8px 12px; font-size: 13px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 500px) {
+      .header { padding: 10px 20px; }
+      .container { padding: 20px; }
+    }
   </style>
 </head>
 <body>

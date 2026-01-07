@@ -1619,4 +1619,77 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* ==================== ENHANCED MOBILE RESPONSIVE ==================== */
+@media (max-width: 1024px) {
+  .navbar { padding: 15px 30px; }
+  .main-content { padding: 20px 15px; }
+  .stats-container { grid-template-columns: repeat(2, 1fr); gap: 15px; }
+}
+
+@media (max-width: 768px) {
+  body { padding-top: 70px; }
+  .navbar { padding: 12px 20px; height: auto; }
+  .logo img { width: 50px; height: 50px; }
+  .logo h1 { font-size: 1.2rem; }
   
+  .nav-links { gap: 10px; padding: 15px; width: 100%; max-width: 250px; }
+  .nav-links li a { padding: 12px 15px; font-size: 14px; }
+  
+  .main-content { padding: 15px 10px; }
+  .dashboard-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .dashboard-header h1 { font-size: 1.75rem; }
+  
+  .stats-container { grid-template-columns: 1fr; gap: 12px; }
+  .stat-card { padding: 20px 15px; }
+  .stat-value { font-size: 2rem; }
+  
+  .groups-grid { grid-template-columns: 1fr; gap: 15px; }
+  .group-card { padding: 20px 15px; }
+  
+  .filter-controls { flex-direction: column; gap: 10px; }
+  .search-box, .filter-select { width: 100%; }
+  
+  .card-actions { flex-direction: column; gap: 8px; }
+  .card-actions .btn { width: 100%; padding: 10px 15px; }
+}
+
+@media (max-width: 480px) {
+  .navbar { padding: 10px 15px; }
+  .logo img { width: 40px; height: 40px; }
+  .logo h1 { font-size: 1rem; }
+  
+  .main-content { padding: 12px 8px; }
+  .dashboard-header h1 { font-size: 1.5rem; }
+  
+  .stat-card { padding: 15px 12px; }
+  .stat-value { font-size: 1.75rem; }
+  .stat-label { font-size: 0.85rem; }
+  
+  .group-card { padding: 15px 12px; }
+  .group-name { font-size: 1rem; }
+  .group-description { font-size: 0.85rem; }
+  
+  .modal-content { padding: 20px 15px; }
+  .modal-header h2 { font-size: 1.25rem; }
+}
+
+@media (max-width: 360px) {
+  body { padding-top: 65px; }
+  .navbar { padding: 8px 12px; }
+  .logo h1 { font-size: 0.9rem; }
+  .hamburger { gap: 4px; }
+  .hamburger span { width: 22px; height: 2.5px; }
+  
+  .stat-value { font-size: 1.5rem; }
+  .stat-label { font-size: 0.8rem; }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .btn, .card-actions .btn, .nav-links li a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}  
