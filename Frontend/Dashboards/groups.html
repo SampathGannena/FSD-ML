@@ -6828,33 +6828,44 @@
     }
 
     async function loadMatchedGroups() {
-      console.log("🔄 Loading matched groups from API...");
+      console.log("=".repeat(60));
+      console.log("🔄 loadMatchedGroups() CALLED - Starting group fetch...");
+      console.log("🌐 Current URL:", window.location.href);
+      console.log("🌐 Origin:", window.location.origin);
       
       try {
         const token = localStorage.getItem('token');
         console.log("🔐 Auth token found:", !!token);
+        console.log("🔐 Token length:", token?.length || 0);
         
         if (!token) {
           console.error("❌ No authentication token found");
-          throw new Error("Authentication required");
+          displayGroups([]);
+          return;
         }
         
-        console.log("📡 Fetching from: http://localhost:5000/api/match-groups");
-        const response = await fetch(`${window.location.origin}/api/match-groups`, {
+        const apiUrl = `${window.location.origin}/api/match-groups`;
+        console.log("📡 Fetching from:", apiUrl);
+        console.log("📡 Making API request NOW...");
+        
+        const response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
         
-        console.log("📡 Response status:", response.status);
+        console.log("📡 Response received! Status:", response.status);
+        console.log("📡 Response OK:", response.ok);
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ HTTP error! status:", response.status, "body:", errorText);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log("📦 API Response data:", data);
+        console.log("📦 API Response data:", JSON.stringify(data, null, 2));
         console.log("📡 Groups array exists:", !!data.groups);
         console.log("📡 Groups array length:", data.groups?.length || 0);
 
@@ -6893,8 +6904,14 @@
           updateMemberStatus(group.group_name, 'online');
         });
         
+        console.log("✅ loadMatchedGroups() COMPLETED successfully");
+        console.log("=".repeat(60));
+        
       } catch (err) {
-        console.error("Error fetching matched groups:", err);
+        console.error("❌ ERROR in loadMatchedGroups:", err);
+        console.error("❌ Error message:", err.message);
+        console.error("❌ Error stack:", err.stack);
+        console.log("=".repeat(60));
         displayGroups([]);
       }
     }
@@ -7172,23 +7189,38 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       // Initialize DOM elements
-      console.log("🚀 DOMContentLoaded fired - Starting initialization...");
+      console.log("=".repeat(80));
+      console.log("🚀 DOMContentLoaded EVENT FIRED!");
+      console.log("🚀 Starting groups.html initialization...");
+      console.log("🌐 Page URL:", window.location.href);
+      console.log("=".repeat(80));
+      
       chatBody = document.querySelector('#chat-body');
       input = document.querySelector('#chat-input');
       
       // Load current user info first
+      console.log("👤 Loading current user info...");
       await loadCurrentUserInfo();
+      console.log("👤 User info loaded");
       
       // Check if groups container exists
       const groupsContainer = document.getElementById('groups-container');
       console.log("📋 Groups container found:", !!groupsContainer);
       if (groupsContainer) {
         console.log("📦 Container innerHTML before load:", groupsContainer.innerHTML.length, "chars");
+      } else {
+        console.error("❌ CRITICAL: groups-container not found!");
       }
 
       // Load initial data
       console.log("🚀 About to call loadMatchedGroups...");
-      loadMatchedGroups();
+      try {
+        await loadMatchedGroups();
+        console.log("✅ loadMatchedGroups call completed");
+      } catch (error) {
+        console.error("❌ Error calling loadMatchedGroups:", error);
+      }
+      
       document.getElementById('send-btn').addEventListener('click', sendMessage);
       
       // Emoji button - wrapped in try-catch to prevent errors
