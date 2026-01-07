@@ -8,6 +8,7 @@ const profileRoutes = require('./routes/profile');
 const mentorAuthRoutes = require('./routes/mentorAuth');
 const groupRoutes = require('./routes/groupRoutes');
 const groupStatsRoutes = require('./routes/groupStatsRoutes');
+const groupRecommendationRoutes = require('./routes/groupRecommendationRoutes');
 const videoRoomRoutes = require('./routes/videoRoomRoutes');
 const studySessionRoutes = require('./routes/studySessionRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
@@ -101,6 +102,7 @@ app.use('/api', profileRoutes);
 app.use('/api/video-rooms', videoRoomRoutes);
 app.use('/api/sessions', studySessionRoutes);
 app.use('/api/groups', groupStatsRoutes);
+app.use('/api/groups', groupRecommendationRoutes); // Group recommendations
 
 // ============ MENTOR AVAILABILITY ENDPOINTS ============
 
