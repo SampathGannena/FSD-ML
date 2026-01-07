@@ -1082,19 +1082,23 @@ app.post('/api/match-groups', authMiddleware, async (req, res) => {
 // GET /api/match-groups - Get user's groups with full details
 app.get('/api/match-groups', authMiddleware, async (req, res) => {
   try {
-    console.log("🔍 Fetching groups for user:", req.user._id);
+    console.log("=".repeat(60));
+    console.log("🔍 GET /api/match-groups - Fetching groups for user:", req.user._id);
     const user = await User.findById(req.user._id);
     if (!user) {
       console.log("❌ User not found:", req.user._id);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    console.log("👤 User found:", user.fullname);
-    console.log("📋 User groups:", user.groups);
+    console.log("👤 User found:", user.fullname, "Email:", user.email);
+    console.log("📋 User groups array:", JSON.stringify(user.groups));
+    console.log("📋 Number of groups:", user.groups?.length || 0);
 
     // Get full group data from Group model
     const userGroupNames = user.groups || [];
+    console.log("🔎 Searching for groups with names:", userGroupNames);
     const groups = await Group.find({ name: { $in: userGroupNames } });
+    console.log("📦 Found groups in database:", groups.length);
 
     // Map groups to response format with all details
     const groupsData = groups.map(group => {
@@ -1138,7 +1142,10 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
 
     // For any group names that don't exist in Group collection yet, create placeholder data
     const missingGroups = userGroupNames.filter(name => !groups.find(g => g.name === name));
+    console.log("🔍 Missing groups (in user.groups but not in Group collection):", missingGroups);
+    
     for (const groupName of missingGroups) {
+      console.log("📦 Auto-creating missing group:", groupName);
       // Auto-create the group in database
       const newGroup = await Group.create({
         name: groupName,
@@ -1171,7 +1178,9 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
       });
     }
 
-    console.log("📡 Sending response with", groupsData.length, "groups");
+    console.log("📡 Total groups to send:", groupsData.length);
+    console.log("📊 Groups data:", groupsData.map(g => ({ name: g.group_name, members: g.totalMembers })));
+    console.log("=".repeat(60));
     res.json({ groups: groupsData });
   } catch (err) {
     console.error("❌ Error fetching user groups:", err);
