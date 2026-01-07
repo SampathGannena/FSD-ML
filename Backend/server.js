@@ -37,6 +37,9 @@ app.get('/health', (req, res) => {
 // Serve static files from the entire Frontend folder
 app.use(express.static(path.join(__dirname, '../Frontend')));
 
+// Serve static files from Backend/public folder (for reset.html, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Serve static files from the Frontend/landing folder (for backward compatibility)
 app.use('/landing', express.static(path.join(__dirname, '../Frontend/landing')));
 
@@ -599,8 +602,6 @@ app.get('/credentials/signup.html', (req, res) => {
 app.get('/mentorDash/mentorAdvancedDashboard-test.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../Frontend/mentorDash/mentorAdvancedDashboard-test.html'));
 });
-
-app.use(express.static('public'));
 
 
 app.post('/api/group-upload', authMiddleware, upload.single('file'), async (req, res) => {
