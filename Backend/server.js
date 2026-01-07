@@ -1422,7 +1422,7 @@ app.get('/api/groups/:groupName/activity', authMiddleware, async (req, res) => {
 //   }
 // });
 
-app.use("/api/save-current-group",groupRoutes);
+app.use("/api", groupRoutes);
 
 // ============== Code Editor API Endpoints ==============
 
