@@ -67,8 +67,11 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
+    console.log(`[Forgot Password] Request received for email: ${email}`);
+
     const user = await User.findOne({ email });
     if (!user) {
+      console.log(`[Forgot Password] No user found with email: ${email}`);
       return res.status(404).json({ message: 'No account found with this email address' });
     }
 
@@ -76,35 +79,70 @@ exports.forgotPassword = async (req, res) => {
     user.resetToken = token;
     user.resetTokenExpiry = Date.now() + 1000 * 60 * 10; // 10 minutes
     await user.save();
+    console.log(`[Forgot Password] Token generated and saved for: ${email}`);
 
     // Use environment variable for base URL or fallback to localhost
     const baseUrl = process.env.FRONTEND_URL || `http://localhost:5500`;
     const resetLink = `${baseUrl}/reset.html?token=${token}&email=${encodeURIComponent(email)}`;
+    console.log(`[Forgot Password] Reset link: ${resetLink}`);
 
-    await sendEmail(
-      email,
-      'Reset Your Password - StudyFinder',
-      `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #ff6b00;">Password Reset Request</h2>
-        <p>Hello,</p>
-        <p>We received a request to reset your password. Click the button below to reset it:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background: linear-gradient(135deg, #ff6b00, #ff4b2b); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
-        </div>
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${resetLink}</p>
-        <p><strong>This link will expire in 10 minutes.</strong></p>
-        <p>If you didn't request this, please ignore this email.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px;">StudyFinder - AI-Powered Learning Platform</p>
-      </div>`
-    );
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error('[Forgot Password] SENDGRID_API_KEY not configured!');
+      return res.status(500).json({ 
+        message: 'Email service not configured. Please contact administrator.' 
+      });
+    }
 
-    console.log(`Password reset email sent to: ${email}`);
-    res.json({ message: 'Reset link sent to your email. Please check your inbox.' });
+    if (!process.env.EMAIL_FROM) {
+      console.error('[Forgot Password] EMAIL_FROM not configured!');
+      return res.status(500).json({ 
+        message: 'Email sender not configured. Please contact administrator.' 
+      });
+    }
+
+    console.log(`[Forgot Password] Sending email from: ${process.env.EMAIL_FROM}`);
+
+    try {
+      await sendEmail(
+        email,
+        'Reset Your Password - StudyFinder',
+        `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #ff6b00;">Password Reset Request</h2>
+          <p>Hello,</p>
+          <p>We received a request to reset your password. Click the button below to reset it:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background: linear-gradient(135deg, #ff6b00, #ff4b2b); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+          </div>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetLink}</p>
+          <p><strong>This link will expire in 10 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #999; font-size: 12px;">StudyFinder - AI-Powered Learning Platform</p>
+        </div>`
+      );
+      console.log(`[Forgot Password] ✓ Email sent successfully to: ${email}`);
+    } catch (emailError) {
+      console.error('[Forgot Password] Email sending failed:', emailError);
+      
+      // Provide more specific error message
+      let errorMessage = 'Failed to send reset email. ';
+      if (emailError.message.includes('not configured')) {
+        errorMessage += 'Email service not configured.';
+      } else if (emailError.message.includes('Forbidden') || emailError.response?.body?.errors?.[0]?.message?.includes('not verified')) {
+        errorMessage += 'Email sender not verified in SendGrid. Please verify your sender email.';
+      } else {
+        errorMessage += 'Please try again later or contact support.';
+      }
+      
+      return res.status(500).json({ message: errorMessage });
+    }
+
+    res.json({ message: 'Reset link sent to your email. Please check your inbox and spam folder.' });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+    console.error('[Forgot Password] Unexpected error:', error);
+    res.status(500).json({ message: 'An unexpected error occurred. Please try again later.' });
   }
 };
 
