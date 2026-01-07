@@ -6701,7 +6701,7 @@
         socket.close();
       }
 
-      socket = new WebSocket('${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}');
+      socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
 
       socket.onopen = () => {
         socket.send(JSON.stringify({ type: 'join', group: groupName }));
