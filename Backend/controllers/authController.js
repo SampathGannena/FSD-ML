@@ -60,27 +60,52 @@ exports.signin = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  try {
+    const { email } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
-  const token = crypto.randomBytes(32).toString('hex');
-  user.resetToken = token;
-  user.resetTokenExpiry = Date.now() + 1000 * 60 * 10; // 10 minutes
-  await user.save();
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this email address' });
+    }
 
-  const resetLink = `http://192.168.1.4:5500/reset.html?token=${token}&email=${email}`;
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetToken = token;
+    user.resetTokenExpiry = Date.now() + 1000 * 60 * 10; // 10 minutes
+    await user.save();
 
+    // Use environment variable for base URL or fallback to localhost
+    const baseUrl = process.env.FRONTEND_URL || `http://localhost:5500`;
+    const resetLink = `${baseUrl}/reset.html?token=${token}&email=${encodeURIComponent(email)}`;
 
-  await sendEmail(
-    email,
-    'Reset Your Password',
-    `<h2>Password Reset</h2>
-     <p>Click <a href="${resetLink}">here</a> to reset your password. The link expires in 10 minutes.</p>`
-  );
+    await sendEmail(
+      email,
+      'Reset Your Password - StudyFinder',
+      `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #ff6b00;">Password Reset Request</h2>
+        <p>Hello,</p>
+        <p>We received a request to reset your password. Click the button below to reset it:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background: linear-gradient(135deg, #ff6b00, #ff4b2b); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+        </div>
+        <p>Or copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #666;">${resetLink}</p>
+        <p><strong>This link will expire in 10 minutes.</strong></p>
+        <p>If you didn't request this, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px;">StudyFinder - AI-Powered Learning Platform</p>
+      </div>`
+    );
 
-  res.json({ message: 'Reset link sent to your email.' });
+    console.log(`Password reset email sent to: ${email}`);
+    res.json({ message: 'Reset link sent to your email. Please check your inbox.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+  }
 };
 
 exports.resetPassword = async (req, res) => {
