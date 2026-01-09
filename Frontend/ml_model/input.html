@@ -3,109 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Study Group Finder</title>
+  <title>Study Groups</title>
   <script src="../js/notifications.js"></script>
   <script src="../js/auth-guard.js"></script>
   <link rel="stylesheet" href="input.css" />
 </head>
 <body>
 
-  <div class="form-container">
-    <h2>📚 Find Your Study Group</h2>
-    <p>Fill in the details to get the best match!</p>
+  <div class="container">
+    <!-- Header Section -->
+    <div class="header">
+      <h1>📚 Study Groups</h1>
+      <p>Discover and join study groups</p>
+    </div>
 
-    <form id="study-form">
+    <!-- Search Bar -->
+    <div class="search-container">
+      <input 
+        type="text" 
+        id="searchBar" 
+        placeholder="🔍 Search groups by name, category, or tags..." 
+        autocomplete="off"
+      />
+    </div>
 
-      <!-- Subjects -->
-      <label for="subjects">📖 Preferred Subject:</label>
-      <select id="subjects" required>
-        <option value="">Select Subject</option>
-        <option value="ai & machine learning">AI & Machine Learning</option>
-        <option value="ar/vr">AR/VR</option>
-        <option value="bash">Bash</option>
-        <option value="bioinformatics">Bioinformatics</option>
-        <option value="blockchain">Blockchain</option>
-        <option value="c">C</option>
-        <option value="c#">C#</option>
-        <option value="c++">C++</option>
-        <option value="cloud computing">Cloud Computing</option>
-        <option value="cybersecurity">Cybersecurity</option>
-        <option value="dart">Dart</option>
-        <option value="data science">Data Science</option>
-        <option value="devops">DevOps</option>
-        <option value="elixir">Elixir</option>
-        <option value="embedded systems">Embedded Systems</option>
-        <option value="game development">Game Development</option>
-        <option value="go">Go</option>
-        <option value="haskell">Haskell</option>
-        <option value="iot">IoT</option>
-        <option value="java">Java</option>
-        <option value="javascript">JavaScript</option>
-        <option value="kotlin">Kotlin</option>
-        <option value="lisp">Lisp</option>
-        <option value="mobile development">Mobile Development</option>
-        <option value="perl">Perl</option>
-        <option value="php">PHP</option>
-        <option value="powershell">PowerShell</option>
-        <option value="prolog">Prolog</option>
-        <option value="python">Python</option>
-        <option value="quantum computing">Quantum Computing</option>
-        <option value="robotics">Robotics</option>
-        <option value="ruby">Ruby</option>
-        <option value="rust">Rust</option>
-        <option value="swift">Swift</option>
-        <option value="typescript">TypeScript</option>
-        <option value="web development">Web Development</option>
-      </select>
-      
-    
+    <!-- Filter Options -->
+    <div class="filter-container">
+      <button class="filter-btn active" data-filter="all">All Groups</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="my-groups">My Groups</button>
+    </div>
 
-      <!-- Study Schedule -->
-      <label>⏰ Preferred Study Time:</label>
-      <div class="radio-group">
-        <input type="radio" name="schedule" value="morning" id="morning" required />
-        <label for="morning">Morning</label>
+    <!-- Groups Grid -->
+    <div id="groupsContainer" class="groups-grid">
+      <!-- Groups will be loaded here dynamically -->
+      <div class="loading">Loading groups...</div>
+    </div>
 
-        <input type="radio" name="schedule" value="afternoon" id="afternoon" />
-        <label for="afternoon">Afternoon</label>
-
-        <input type="radio" name="schedule" value="evening" id="evening" />
-        <label for="evening">Evening</label>
-
-        <input type="radio" name="schedule" value="night" id="night" />
-        <label for="night">Night</label>
-      </div>
-
-      <!-- Difficulty Level -->
-      <label for="difficulty">📊 Difficulty Level:</label>
-      <select id="difficulty" required>
-        <option value="">Select Level</option>
-        <option value="beginner">Beginner</option>
-        <option value="intermediate">Intermediate</option>
-        <option value="advanced">Advanced</option>
-      </select>
-
-      <!-- Learning Habit -->
-      <label for="habits">🧠 Learning Habit:</label>
-      <select id="habit" name="habit" required>
-        <option value="">Select Your Habit</option>
-        <option value="Short; structured lessons; review notes; set goals">Short, structured lessons; review notes; set goals</option>
-        <option value="Deep study sessions; teach-back; Pomodoro">Deep study sessions; teach-back; Pomodoro</option>
-        <option value="Complex tasks; critical thinking; journaling ideas">Complex tasks; critical thinking; journaling ideas</option>
-        <option value="Interactive learning; group study; mini-recaps">Interactive learning; group study; mini-recaps</option>
-        <option value="Apply knowledge; concept mapping; review walk">Apply knowledge; concept mapping; review walk</option>
-        <option value="Project work; collaboration; skill layering">Project work; collaboration; skill layering</option>
-        <option value="Light reading; practice problems; reward session">Light reading; practice problems; reward session</option>
-        <option value="Revision; experimentation; peer discussion">Revision; experimentation; peer discussion</option>
-        <option value="Self-assessment; mentoring; review loop">Self-assessment; mentoring; review loop</option>
-      </select>
-      
-
-      <button type="submit" class="btn">Find My Study Group</button>
-    </form>
-
-    <!-- Result Display -->
-    <div id="result" class="result-container"></div>
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <p>No groups found. Try adjusting your search.</p>
+    </div>
   </div>
 
   <script src="input.js"></script>
