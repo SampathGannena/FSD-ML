@@ -54,7 +54,7 @@ async function loadUserGroups() {
   if (!token) return;
 
   try {
-    const userResponse = await fetch(`${API_URL}/api/auth/user`, {
+    const userResponse = await fetch(`${API_URL}/api/profile`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -204,7 +204,7 @@ async function handleJoinGroup(groupName) {
 
   try {
     // First, save the group to the user's account
-    const response = await fetch(`${API_URL}/api/groups/save-current-group`, {
+    const response = await fetch(`${API_URL}/api/save-current-group`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
