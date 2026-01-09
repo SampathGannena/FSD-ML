@@ -113,17 +113,22 @@
           <h5>Courses Enrolled</h5>
           <p class="fs-4" id="profile-courses">8</p>
         </div> -->
-        <div class="col-md-4">
+        <div class="col-md-6">
           <h5>Streak</h5>
           <p class="fs-4" id="profile-streak">21 Days 🔥</p>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
           <h5>Achievements</h5>
-          <p class="fs-4" id="profile-badges">5 Badges 🏅</p>
+          <p class="fs-4" id="profile-badges-count">0 Badges 🏅</p>
         </div>
       </div>
 
       <hr class="my-4 border-orange" />
+
+      <h5 class="mb-3">Your Badges</h5>
+      <div class="d-flex flex-wrap justify-content-center gap-2 mb-4" id="profile-badges">
+        <!-- Achievement badges will be inserted here dynamically -->
+      </div>
 
       <h5 class="mb-3">Groups Joined</h5>
       <div class="d-flex flex-wrap justify-content-center gap-2" id="profile-groups">
@@ -186,10 +191,15 @@
 
         document.getElementById('profile-avatar').src = user.avatar;
         document.getElementById('profile-username').textContent = user.username || user.fullname || '';
-        document.getElementById('profile-bio').textContent = user.bio;
+        document.getElementById('profile-bio').textContent = user.bio || 'No bio yet';
         // document.getElementById('profile-courses').textContent = user.courses;
-        document.getElementById('profile-streak').textContent = user.streak + '🔥';
-        // document.getElementById('profile-badges').textContent = user.badges + '🏅';
+        document.getElementById('profile-streak').textContent = user.streak + ' Days 🔥';
+        
+        // Update badges count
+        const badgeCount = (user.badges || []).length;
+        document.getElementById('profile-badges-count').textContent = badgeCount + (badgeCount === 1 ? ' Badge 🏅' : ' Badges 🏅');
+        
+        // Display individual badges
         const badgesDiv = document.getElementById('profile-badges');
         badgesDiv.innerHTML = '';
 
@@ -202,12 +212,17 @@
           'ace_elites':'🦅 Ace Elite',
           'conqueror_group': '🔥 Conqueror King'
         };
-        (user.badges || []).forEach(badge => {
-          const span = document.createElement('span');
-          span.className = 'badge badge-success mx-1';
-          span.textContent = badgeMap[badge] || badge; 
-          badgesDiv.appendChild(span);
-        });
+        
+        if (user.badges && user.badges.length > 0) {
+          user.badges.forEach(badge => {
+            const span = document.createElement('span');
+            span.className = 'badge badge-orange px-3 py-2';
+            span.textContent = badgeMap[badge] || badge;
+            badgesDiv.appendChild(span);
+          });
+        } else {
+          badgesDiv.innerHTML = '<p class="text-muted">No badges earned yet. Keep learning!</p>';
+        }
 
         const groupsDiv = document.getElementById('profile-groups');
         groupsDiv.innerHTML = '';
