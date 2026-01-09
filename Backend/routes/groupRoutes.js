@@ -53,8 +53,38 @@ router.post('/save-current-group', authMiddleware, async (req, res) => {
     // Also update user's groups array (for backward compatibility)
     if (!user.groups.includes(groupName)) {
       user.groups.push(groupName);
+      
+      // Badge logic - Award badges based on number of groups joined
+      let badges = user.badges || [];
+      const groupCount = user.groups.length;
+      console.log('🏅 Current group count:', groupCount, 'Current badges:', badges);
+
+      if (groupCount >= 50 && !badges.includes('conqueror_group')) {
+        badges.push('conqueror_group');
+        console.log('🔥 Earned: Conqueror King badge!');
+      } else if (groupCount >= 30 && !badges.includes('ace_elites')) {
+        badges.push('ace_elites');
+        console.log('🦅 Earned: Ace Elite badge!');
+      } else if (groupCount >= 20 && !badges.includes('master_group')) {
+        badges.push('master_group');
+        console.log('👑 Earned: Crown Master badge!');
+      } else if (groupCount >= 10 && !badges.includes('diamond_group')) {
+        badges.push('diamond_group');
+        console.log('💎 Earned: Diamond Master badge!');
+      } else if (groupCount >= 5 && !badges.includes('gold_group')) {
+        badges.push('gold_group');
+        console.log('🥇 Earned: Gold badge!');
+      } else if (groupCount >= 3 && !badges.includes('silver_group')) {
+        badges.push('silver_group');
+        console.log('🥈 Earned: Silver badge!');
+      } else if (groupCount >= 1 && !badges.includes('bronze_group')) {
+        badges.push('bronze_group');
+        console.log('🥉 Earned: Bronze badge!');
+      }
+
+      user.badges = badges;
       await user.save();
-      console.log('✅ Added group to user.groups array:', user.groups);
+      console.log('✅ Added group to user.groups array:', user.groups, 'Badges:', badges);
     } else {
       console.log('ℹ️  Group already in user.groups array');
     }
