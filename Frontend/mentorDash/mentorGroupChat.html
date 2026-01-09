@@ -601,16 +601,22 @@
 
     async function loadGroupData(groupName, token) {
       try {
+        console.log('Loading group data for:', groupName);
+        
         // Load group stats to get members
-        const statsResponse = await fetch(`${window.location.origin}/api/groups/${groupName}/stats`, {
+        const statsResponse = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/stats`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
+        console.log('Stats response status:', statsResponse.status);
+
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
+          console.log('Stats data received:', statsData);
+          
           currentGroup = {
             name: groupName,
             members: statsData.members || [],
@@ -622,30 +628,48 @@
           document.getElementById('member-count').innerHTML = 
             `<i class="fas fa-user-friends"></i> ${currentGroup.members.length} members`;
           
+          // Update online count
+          const onlineCount = statsData.stats?.onlineNow || 0;
+          document.getElementById('online-count').innerHTML = 
+            `<i class="fas fa-circle" style="color: #10b981; font-size: 0.6rem;"></i> ${onlineCount} online`;
+          
           displayMembers(currentGroup.members);
           
           // Load messages
           await loadMessages(groupName, token);
         } else {
-          throw new Error('Failed to load group data');
+          const errorText = await statsResponse.text();
+          console.error('Failed to load group data. Status:', statsResponse.status, 'Response:', errorText);
+          throw new Error(`Failed to load group data: ${statsResponse.status} ${errorText}`);
         }
       } catch (error) {
         console.error('Error loading group data:', error);
-        alert('Failed to load group. Please try again.');
+        document.getElementById('group-name').textContent = 'Error Loading Group';
+        document.getElementById('members-list').innerHTML = `
+          <div style="text-align: center; color: #ff4444; padding: 20px;">
+            Failed to load group data<br>
+            <small>${error.message}</small>
+          </div>
+        `;
       }
     }
 
     async function loadMessages(groupName, token) {
       try {
-        const response = await fetch(`${window.location.origin}/api/groups/${groupName}/messages`, {
+        console.log('Loading messages for group:', groupName);
+        
+        const response = await fetch(`${window.location.origin}/api/groups/${encodeURIComponent(groupName)}/messages`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
+        console.log('Messages response status:', response.status);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('Messages data received:', data);
           const messages = data.messages || [];
           
           const messagesArea = document.getElementById('messages-area');
@@ -663,6 +687,9 @@
             messages.forEach(msg => displayMessage(msg));
             scrollToBottom();
           }
+        } else {
+          const errorText = await response.text();
+          console.error('Failed to load messages. Status:', response.status, 'Response:', errorText);
         }
       } catch (error) {
         console.error('Error loading messages:', error);
@@ -771,7 +798,7 @@
               <span class="message-sender">${message.sender}</span>
               <span class="message-time">${messageTime}</span>
             </div>
-            <div class="file-message" onclick="window.open(`${window.location.origin}${message.fileUrl}`, '_blank')">
+            <div class="file-message" onclick="window.open('${window.location.origin}${message.fileUrl}', '_blank')">
               <i class="fas fa-file file-icon"></i>
               <div class="file-details">
                 <div class="file-name">${message.fileName || 'File'}</div>
