@@ -473,9 +473,9 @@
       const container = document.getElementById('requests-container');
 
       try {
-        console.log('Fetching mentorship requests...');
+        console.log('Fetching study session requests...');
         
-        const response = await fetch(`${window.location.origin}/api/mentor/requests`, {
+        const response = await fetch(`${window.location.origin}/api/sessions/mentor-requests`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -486,9 +486,9 @@
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Requests data:', data);
+          console.log('Session requests data:', data);
           
-          allRequests = data.requests || [];
+          allRequests = data.sessions || [];
           updateStats();
           renderRequests(allRequests);
         } else {
@@ -503,9 +503,9 @@
     }
 
     function updateStats() {
-      const pending = allRequests.filter(r => r.status === 'pending').length;
-      const accepted = allRequests.filter(r => r.status === 'accepted').length;
-      const declined = allRequests.filter(r => r.status === 'declined').length;
+      const pending = allRequests.filter(r => r.mentorResponse?.status === 'pending').length;
+      const accepted = allRequests.filter(r => r.mentorResponse?.status === 'accepted').length;
+      const declined = allRequests.filter(r => r.mentorResponse?.status === 'declined').length;
       
       document.getElementById('pending-count').textContent = pending;
       document.getElementById('accepted-count').textContent = accepted;
@@ -535,32 +535,42 @@
     }
 
     function createRequestCard(request) {
-      const statusClass = request.status || 'pending';
-      const studentInitials = request.studentName ? request.studentName.substring(0, 2).toUpperCase() : 'ST';
-      const requestDate = new Date(request.requestDate).toLocaleDateString('en-US', {
+      const statusClass = request.mentorResponse?.status || 'pending';
+      const organizerName = request.organizer?.name || 'Unknown Student';
+      const studentInitials = organizerName.substring(0, 2).toUpperCase();
+      
+      const sessionDate = new Date(request.sessionDate).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
+        weekday: 'short'
       });
 
-      const isPending = request.status === 'pending';
+      const isPending = request.mentorResponse?.status === 'pending';
+      const participantsCount = request.participants?.length || 0;
 
       return `
         <div class="request-card ${statusClass}">
           <div class="request-header">
             <div class="request-title">
-              <h3>${escapeHtml(request.subject || 'Mentorship Request')}</h3>
+              <h3>${escapeHtml(request.title)}</h3>
               <div class="request-meta">
                 <span class="meta-item">
                   <i class="fas fa-calendar"></i>
-                  ${requestDate}
+                  ${sessionDate}
                 </span>
-                ${request.duration ? `
-                  <span class="meta-item">
-                    <i class="fas fa-clock"></i>
-                    ${request.duration}
-                  </span>
-                ` : ''}
+                <span class="meta-item">
+                  <i class="fas fa-clock"></i>
+                  ${request.startTime} - ${request.endTime} (${request.duration}h)
+                </span>
+                <span class="meta-item">
+                  <i class="fas fa-users"></i>
+                  ${participantsCount} participant${participantsCount !== 1 ? 's' : ''}
+                </span>
+                <span class="meta-item">
+                  <i class="fas fa-bookmark"></i>
+                  ${escapeHtml(request.subject)}
+                </span>
               </div>
             </div>
             <span class="status-badge ${statusClass}">${statusClass}</span>
@@ -570,15 +580,33 @@
             <div class="student-info">
               <div class="student-avatar">${studentInitials}</div>
               <div class="student-details">
-                <div class="student-name">${escapeHtml(request.studentName || 'Student')}</div>
-                <div class="student-email">${escapeHtml(request.studentEmail || '')}</div>
+                <div class="student-name">${escapeHtml(organizerName)} (Organizer)</div>
+                <div class="student-email">${escapeHtml(request.organizer?.email || '')}</div>
               </div>
             </div>
 
-            ${request.message ? `
+            ${request.description ? `
               <div class="request-description">
-                <strong>Message:</strong><br>
-                ${escapeHtml(request.message)}
+                <strong>Session Description:</strong><br>
+                ${escapeHtml(request.description)}
+              </div>
+            ` : ''}
+
+            ${request.mentorRequirements ? `
+              <div class="request-description">
+                <strong>Mentor Requirements:</strong><br>
+                ${escapeHtml(request.mentorRequirements)}
+              </div>
+            ` : ''}
+
+            ${request.expertiseNeeded && request.expertiseNeeded.length > 0 ? `
+              <div style="margin-top: 10px;">
+                <strong>Expertise Needed:</strong>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                  ${request.expertiseNeeded.map(exp => 
+                    `<span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; border: 1px solid rgba(59, 130, 246, 0.3);">${exp}</span>`
+                  ).join('')}
+                </div>
               </div>
             ` : ''}
           </div>
@@ -586,7 +614,7 @@
           <div class="request-actions">
             ${isPending ? `
               <button class="action-btn accept-btn" onclick="handleRequest('${request._id}', 'accepted')">
-                <i class="fas fa-check"></i> Accept
+                <i class="fas fa-check"></i> Accept Session
               </button>
               <button class="action-btn decline-btn" onclick="handleRequest('${request._id}', 'declined')">
                 <i class="fas fa-times"></i> Decline
@@ -601,48 +629,72 @@
       `;
     }
 
-    async function handleRequest(requestId, status) {
+    async function handleRequest(sessionId, response) {
       const token = localStorage.getItem('mentorToken');
       
-      const confirmMsg = status === 'accepted' 
-        ? 'Are you sure you want to accept this request?' 
-        : 'Are you sure you want to decline this request?';
+      const confirmMsg = response === 'accepted' 
+        ? 'Are you sure you want to accept this study session request?' 
+        : 'Are you sure you want to decline this session?';
       
       if (!confirm(confirmMsg)) return;
 
+      const message = prompt(response === 'accepted' 
+        ? 'Add a message for the student (optional):' 
+        : 'Reason for declining (optional):');
+
       try {
-        const response = await fetch(`${window.location.origin}/api/mentor/requests/${requestId}`, {
-          method: 'PUT',
+        const apiResponse = await fetch(`${window.location.origin}/api/sessions/${sessionId}/respond-mentor`, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ 
-            status,
-            message: status === 'accepted' ? 'Request accepted!' : 'Request declined'
+            response,
+            message: message || (response === 'accepted' ? 'Looking forward to the session!' : 'Unable to accept at this time')
           })
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Request updated:', data);
+        if (apiResponse.ok) {
+          const data = await apiResponse.json();
+          console.log('Session response updated:', data);
           
-          alert(`Request ${status} successfully!`);
+          alert(`Session ${response} successfully!`);
           await loadRequests();
         } else {
-          const errorData = await response.json();
-          alert('Failed to update request: ' + (errorData.message || 'Unknown error'));
+          const errorData = await apiResponse.json();
+          alert('Failed to respond to session: ' + (errorData.message || 'Unknown error'));
         }
       } catch (error) {
-        console.error('Error updating request:', error);
-        alert('Failed to update request. Please try again.');
+        console.error('Error responding to session:', error);
+        alert('Failed to respond to session. Please try again.');
       }
     }
 
-    function viewRequestDetails(requestId) {
-      const request = allRequests.find(r => r._id === requestId);
-      if (request) {
-        alert(`Request Details:\n\nStudent: ${request.studentName}\nEmail: ${request.studentEmail}\nSubject: ${request.subject}\nStatus: ${request.status}\nMessage: ${request.message || 'No message'}`);
+    function viewRequestDetails(sessionId) {
+      const session = allRequests.find(r => r._id === sessionId);
+      if (session) {
+        const details = `Session Details:
+
+Title: ${session.title}
+Organizer: ${session.organizer?.name || 'Unknown'}
+Email: ${session.organizer?.email || 'N/A'}
+
+Date: ${new Date(session.sessionDate).toLocaleDateString()}
+Time: ${session.startTime} - ${session.endTime}
+Duration: ${session.duration} hours
+Subject: ${session.subject}
+Level: ${session.level}
+
+Description: ${session.description || 'No description'}
+Mentor Requirements: ${session.mentorRequirements || 'None specified'}
+Expertise Needed: ${session.expertiseNeeded?.join(', ') || 'None specified'}
+
+Participants: ${session.participants?.length || 0}
+Status: ${session.mentorResponse?.status || 'pending'}
+${session.mentorResponse?.response ? `Response: ${session.mentorResponse.response}` : ''}`;
+        
+        alert(details);
       }
     }
 
@@ -660,7 +712,7 @@
           
           let filteredRequests = allRequests;
           if (currentFilter !== 'all') {
-            filteredRequests = allRequests.filter(r => r.status === currentFilter);
+            filteredRequests = allRequests.filter(r => r.mentorResponse?.status === currentFilter);
           }
           
           renderRequests(filteredRequests);
