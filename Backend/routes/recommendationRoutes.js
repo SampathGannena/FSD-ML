@@ -8,7 +8,51 @@ const router = express.Router();
 const recommendationService = require('../services/recommendationService');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Apply authentication to all recommendation routes
+/**
+ * GET /api/recommendations/status
+ * Get recommendation system status (public endpoint)
+ */
+router.get('/status', async (req, res) => {
+    try {
+        const status = await recommendationService.getStatus();
+        
+        res.json({
+            success: true,
+            data: status
+        });
+    } catch (error) {
+        console.error('Error getting recommendation status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get recommendation system status',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/recommendations/initialize
+ * Initialize the recommendation system (public endpoint)
+ */
+router.post('/initialize', async (req, res) => {
+    try {
+        const result = await recommendationService.initialize();
+        
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error initializing recommendations:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to initialize recommendation system',
+            error: error.message
+        });
+    }
+});
+
+// Apply authentication to all remaining recommendation routes
 router.use(authMiddleware);
 
 /**
@@ -105,28 +149,6 @@ router.get('/groups', async (req, res) => {
 });
 
 /**
- * GET /api/recommendations/status
- * Get recommendation system status
- */
-router.get('/status', async (req, res) => {
-    try {
-        const status = await recommendationService.getStatus();
-        
-        res.json({
-            success: true,
-            data: status
-        });
-    } catch (error) {
-        console.error('Error getting recommendation status:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get recommendation system status',
-            error: error.message
-        });
-    }
-});
-
-/**
  * POST /api/recommendations/train
  * Train/update recommendation models (admin only)
  */
@@ -154,28 +176,6 @@ router.post('/train', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to start model training',
-            error: error.message
-        });
-    }
-});
-
-/**
- * POST /api/recommendations/initialize
- * Initialize the recommendation system
- */
-router.post('/initialize', async (req, res) => {
-    try {
-        const result = await recommendationService.initialize();
-        
-        res.json({
-            success: true,
-            data: result
-        });
-    } catch (error) {
-        console.error('Error initializing recommendations:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to initialize recommendation system',
             error: error.message
         });
     }
