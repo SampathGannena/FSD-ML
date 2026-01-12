@@ -144,75 +144,83 @@
 
         <!-- Discussions Tab -->
         <div class="tab-content" id="discussions-tab">
-          <div class="discussions-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-            <div class="discussions-filters" style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <input type="text" id="discussion-search" placeholder="🔍 Search discussions..." 
-                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px; width: 250px;"
-                onkeyup="filterDiscussions()">
-              
-              <select id="discussion-category-filter" onchange="filterDiscussions()" 
-                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
-                <option value="">All Categories</option>
-                <option value="question">❓ Questions</option>
-                <option value="resource">📚 Resources</option>
-                <option value="discussion">💬 General Discussion</option>
-                <option value="announcement">📢 Announcements</option>
-              </select>
-
-              <select id="discussion-status-filter" onchange="filterDiscussions()" 
-                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
-                <option value="">All Status</option>
-                <option value="open">🟢 Open</option>
-                <option value="answered">✅ Answered</option>
-                <option value="closed">🔒 Closed</option>
-              </select>
-
-              <select id="discussion-sort" onchange="sortDiscussions()" 
-                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
-                <option value="recent">🕐 Most Recent</option>
-                <option value="popular">🔥 Most Popular</option>
-                <option value="unanswered">❔ Unanswered</option>
-              </select>
-            </div>
-
-            <button class="btn-primary" onclick="showNewDiscussionModal()" 
-              style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-              <i class="fas fa-plus"></i> New Discussion
+          <div class="doubt-actions" style="margin-bottom: 20px;">
+            <button class="btn-primary" onclick="showNewDiscussionModal()">
+              <i class="fas fa-comments"></i> New Discussion
             </button>
+            
+            <select id="discussion-category-filter" onchange="filterDiscussions()" style="margin-left: 10px;">
+              <option value="">All Categories</option>
+              <option value="question">Questions</option>
+              <option value="resource">Resources</option>
+              <option value="discussion">Discussions</option>
+              <option value="announcement">Announcements</option>
+            </select>
+
+            <select id="discussion-status-filter" onchange="filterDiscussions()" style="margin-left: 10px;">
+              <option value="">All Status</option>
+              <option value="open">Open</option>
+              <option value="answered">Answered</option>
+              <option value="closed">Closed</option>
+            </select>
+
+            <select id="discussion-sort" onchange="sortDiscussions()" style="margin-left: 10px;">
+              <option value="recent">Most Recent</option>
+              <option value="popular">Most Popular</option>
+              <option value="unanswered">Unanswered</option>
+            </select>
           </div>
 
-          <div class="discussions-container" id="discussions-container">
+          <div class="form-group" style="margin-bottom: 20px;">
+            <input type="text" id="discussion-search" placeholder="🔍 Search discussions by title, description, or tags..." 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"
+              onkeyup="filterDiscussions()">
+          </div>
+
+          <div class="doubts-container" id="discussions-container">
             <!-- Discussions will be loaded here -->
           </div>
         </div>
 
         <!-- Progress Tab -->
         <div class="tab-content" id="progress-tab">
-          <div class="progress-overview">
-            <div class="progress-stats">
-              <div class="stat-card">
-                <h3 id="total-tasks">0</h3>
-                <p>Total Tasks</p>
-              </div>
-              <div class="stat-card">
-                <h3 id="completed-tasks">0</h3>
-                <p>Completed</p>
-              </div>
-              <div class="stat-card">
-                <h3 id="active-goals">0</h3>
-                <p>Active Goals</p>
-              </div>
-              <div class="stat-card">
-                <h3 id="mentor-sessions">0</h3>
-                <p>Sessions</p>
-              </div>
-            </div>
+          <div class="doubt-actions" style="margin-bottom: 20px;">
+            <button class="btn-primary" onclick="loadProgressData()">
+              <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+            <select id="progress-time-range" onchange="loadProgressData()" style="margin-left: 10px;">
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 3 Months</option>
+              <option value="365">Last Year</option>
+            </select>
+          </div>
 
-            <!-- Progress Charts Section -->
-            <div class="progress-charts-section" style="margin-top: 30px;">
-              <h3 style="margin-bottom: 20px;"><i class="fas fa-chart-line"></i> Progress Analytics</h3>
-              
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px;">
+          <!-- Stats Overview -->
+          <div class="progress-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+            <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+              <div style="color: #3b82f6; font-size: 2rem; font-weight: bold;" id="total-tasks">0</div>
+              <p style="color: #6b7280; margin-top: 5px;">Total Tasks</p>
+            </div>
+            <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+              <div style="color: #10b981; font-size: 2rem; font-weight: bold;" id="completed-tasks">0</div>
+              <p style="color: #6b7280; margin-top: 5px;">Completed</p>
+            </div>
+            <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+              <div style="color: #f59e0b; font-size: 2rem; font-weight: bold;" id="active-goals">0</div>
+              <p style="color: #6b7280; margin-top: 5px;">Active Goals</p>
+            </div>
+            <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+              <div style="color: #8b5cf6; font-size: 2rem; font-weight: bold;" id="mentor-sessions">0</div>
+              <p style="color: #6b7280; margin-top: 5px;">Sessions</p>
+            </div>
+          </div>
+
+          <!-- Progress Charts Section -->
+          <div class="progress-charts-section">
+            <h4 style="margin-bottom: 20px; color: #1f2937;"><i class="fas fa-chart-line"></i> Your Progress Analytics</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <!-- Overall Progress Chart -->
                 <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                   <h4 style="margin-bottom: 15px; color: #333;"><i class="fas fa-line-chart"></i> Overall Progress Trend</h4>
@@ -239,9 +247,10 @@
               </div>
             </div>
 
-            <div class="progress-details">
-              <h4>Recent Activities</h4>
-              <div class="activities-list" id="activities-list">
+            <!-- Recent Activities Section -->
+            <div class="doubts-container" style="margin-top: 30px;">
+              <h4 style="margin-bottom: 15px; color: #1f2937;"><i class="fas fa-history"></i> Recent Activities</h4>
+              <div id="activities-list">
                 <!-- Activities will be loaded here -->
               </div>
             </div>
@@ -1215,8 +1224,7 @@
         container.innerHTML = `
           <div style="text-align: center; padding: 40px; color: #666;">
             <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-            <p>No discussions found</p>
-            <p style="font-size: 0.9rem;">Be the first to start a discussion!</p>
+            <p>No discussions yet. Click "New Discussion" to start one!</p>
           </div>
         `;
         return;
@@ -1224,60 +1232,38 @@
 
       const html = discussionList.map(discussion => {
         const timeAgo = getTimeAgo(discussion.createdAt);
-        const lastActivityAgo = getTimeAgo(discussion.lastActivity);
-        const statusColor = discussion.status === 'answered' ? '#10b981' : discussion.status === 'closed' ? '#6b7280' : '#3b82f6';
         const categoryIcon = getCategoryIcon(discussion.category);
         
         return `
-          <div class="discussion-card" onclick="viewDiscussion(${discussion.id})" 
-            style="background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
-            onmouseover="this.style.transform='translateY(-2px)'" 
-            onmouseout="this.style.transform='translateY(0)'">
-            
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-              <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                  <span style="background: ${statusColor}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">
-                    ${categoryIcon} ${discussion.category.charAt(0).toUpperCase() + discussion.category.slice(1)}
-                  </span>
-                  ${discussion.subject ? `<span style="color: #6b7280; font-size: 0.85rem;">📚 ${discussion.subject}</span>` : ''}
-                  <span style="padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; background: ${statusColor}20; color: ${statusColor};">
-                    ${discussion.status.toUpperCase()}
-                  </span>
-                </div>
-                
-                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 1.1rem;">
-                  ${discussion.title}
-                </h4>
-                
-                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 0.95rem; line-height: 1.5;">
-                  ${discussion.description.substring(0, 150)}${discussion.description.length > 150 ? '...' : ''}
-                </p>
-                
-                ${discussion.tags && discussion.tags.length > 0 ? `
-                  <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px;">
-                    ${discussion.tags.map(tag => `
-                      <span style="background: #e5e7eb; color: #4b5563; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem;">
-                        #${tag}
-                      </span>
-                    `).join('')}
-                  </div>
-                ` : ''}
-                
-                <div style="display: flex; align-items: center; gap: 20px; color: #6b7280; font-size: 0.85rem;">
-                  <span style="display: flex; align-items: center; gap: 5px;">
-                    <div style="width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">
-                      ${discussion.author.avatar}
-                    </div>
-                    ${discussion.author.name}
-                  </span>
-                  <span><i class="fas fa-clock"></i> ${timeAgo}</span>
-                  <span><i class="fas fa-comments"></i> ${discussion.replies} replies</span>
-                  <span><i class="fas fa-arrow-up"></i> ${discussion.upvotes} upvotes</span>
-                  <span style="color: #10b981;"><i class="fas fa-bolt"></i> Active ${lastActivityAgo}</span>
-                </div>
+          <div class="doubt-item" onclick="viewDiscussion(${discussion.id})" style="cursor: pointer;">
+            <div class="doubt-header">
+              <div>
+                <div class="doubt-title">${discussion.title}</div>
+                <span class="doubt-category">${categoryIcon} ${discussion.category.charAt(0).toUpperCase() + discussion.category.slice(1)}</span>
+                ${discussion.subject ? `<span class="doubt-category" style="margin-left: 10px;">📚 ${discussion.subject}</span>` : ''}
               </div>
+              <span class="doubt-status ${discussion.status}">${discussion.status}</span>
+            </div>
+            <div class="doubt-description">${discussion.description.substring(0, 150)}${discussion.description.length > 150 ? '...' : ''}</div>
+            ${discussion.tags && discussion.tags.length > 0 ? `
+              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0;">
+                ${discussion.tags.map(tag => `
+                  <span style="background: #e5e7eb; color: #4b5563; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem;">
+                    #${tag}
+                  </span>
+                `).join('')}
+              </div>
+            ` : ''}
+            <div class="doubt-meta">
+              <span style="display: flex; align-items: center; gap: 5px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">
+                  ${discussion.author.avatar}
+                </div>
+                ${discussion.author.name}
+              </span>
+              <span><i class="fas fa-clock"></i> ${timeAgo}</span>
+              <span><i class="fas fa-comments"></i> ${discussion.replies} replies</span>
+              <span><i class="fas fa-arrow-up"></i> ${discussion.upvotes} upvotes</span>
             </div>
           </div>
         `;
@@ -1616,14 +1602,17 @@
     async function loadProgressData() {
       try {
         const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        const timeRange = document.getElementById('progress-time-range')?.value || '7';
+        
         if (!token) {
           console.log('No token found, showing demo data');
           loadDemoProgressData();
           return;
         }
 
-        // Fetch real progress data from backend
-        const response = await fetch(`${window.location.origin}/api/auth/progress`, {
+        // Fetch real progress data from backend for this specific user
+        const response = await fetch(`${window.location.origin}/api/auth/progress?userId=${userId}&range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1632,10 +1621,10 @@
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Progress data loaded:', data);
+          console.log('User progress data loaded:', data);
           displayProgressData(data);
         } else {
-          console.log('Failed to load progress data, showing demo data');
+          console.log('Failed to load progress data, showing demo data for user');
           loadDemoProgressData();
         }
       } catch (error) {
@@ -1711,8 +1700,8 @@
       
       if (activities.length === 0) {
         activitiesList.innerHTML = `
-          <div style="text-align: center; padding: 20px; color: #666;">
-            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 10px; opacity: 0.3;"></i>
+          <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
             <p>No recent activities</p>
           </div>
         `;
@@ -1724,11 +1713,13 @@
         const timeAgo = getTimeAgo(activity.timestamp);
         
         return `
-          <div class="activity-item">
-            <div class="activity-icon">${icon}</div>
-            <div class="activity-details">
-              <div class="activity-title">${activity.title}</div>
-              <div class="activity-time">${timeAgo}</div>
+          <div class="doubt-item" style="margin-bottom: 10px;">
+            <div class="doubt-header">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                ${icon}
+                <div class="doubt-title" style="font-size: 0.95rem;">${activity.title}</div>
+              </div>
+              <span style="color: #6b7280; font-size: 0.85rem;"><i class="fas fa-clock"></i> ${timeAgo}</span>
             </div>
           </div>
         `;
