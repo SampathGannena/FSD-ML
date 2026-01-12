@@ -6,7 +6,9 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const logger = require('../utils/logger') || console;
+
+// Use console for logging (logger module doesn't exist)
+const logger = console;
 
 class RecommendationService {
     constructor() {
