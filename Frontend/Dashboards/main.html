@@ -12,6 +12,7 @@
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
   />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="../js/notifications.js"></script>
   <script src="../js/auth-guard.js"></script>
 </head>
@@ -169,6 +170,38 @@
                 <p>Sessions</p>
               </div>
             </div>
+
+            <!-- Progress Charts Section -->
+            <div class="progress-charts-section" style="margin-top: 30px;">
+              <h3 style="margin-bottom: 20px;"><i class="fas fa-chart-line"></i> Progress Analytics</h3>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <!-- Overall Progress Chart -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  <h4 style="margin-bottom: 15px; color: #333;"><i class="fas fa-line-chart"></i> Overall Progress Trend</h4>
+                  <canvas id="progressTrendChart" style="max-height: 250px;"></canvas>
+                </div>
+
+                <!-- Task Completion Chart -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  <h4 style="margin-bottom: 15px; color: #333;"><i class="fas fa-pie-chart"></i> Task Distribution</h4>
+                  <canvas id="taskDistributionChart" style="max-height: 250px;"></canvas>
+                </div>
+
+                <!-- Study Sessions Chart -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  <h4 style="margin-bottom: 15px; color: #333;"><i class="fas fa-calendar-alt"></i> Study Sessions (Last 7 Days)</h4>
+                  <canvas id="studySessionsChart" style="max-height: 250px;"></canvas>
+                </div>
+
+                <!-- Subject Performance Chart -->
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  <h4 style="margin-bottom: 15px; color: #333;"><i class="fas fa-book"></i> Subject-wise Performance</h4>
+                  <canvas id="subjectPerformanceChart" style="max-height: 250px;"></canvas>
+                </div>
+              </div>
+            </div>
+
             <div class="progress-details">
               <h4>Recent Activities</h4>
               <div class="activities-list" id="activities-list">
@@ -944,38 +977,283 @@
       `;
     }
 
+    // Chart instances
+    let progressTrendChart = null;
+    let taskDistributionChart = null;
+    let studySessionsChart = null;
+    let subjectPerformanceChart = null;
+
     // Load progress data
-    function loadProgressData() {
-      // Demo progress data
-      document.getElementById('total-tasks').textContent = '12';
-      document.getElementById('completed-tasks').textContent = '8';
-      document.getElementById('active-goals').textContent = '3';
-      document.getElementById('mentor-sessions').textContent = '5';
-      
+    async function loadProgressData() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.log('No token found, showing demo data');
+          loadDemoProgressData();
+          return;
+        }
+
+        // Fetch real progress data from backend
+        const response = await fetch(`${window.location.origin}/api/auth/progress`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Progress data loaded:', data);
+          displayProgressData(data);
+        } else {
+          console.log('Failed to load progress data, showing demo data');
+          loadDemoProgressData();
+        }
+      } catch (error) {
+        console.error('Error loading progress data:', error);
+        loadDemoProgressData();
+      }
+    }
+
+    // Display real progress data
+    function displayProgressData(data) {
+      // Update stats
+      document.getElementById('total-tasks').textContent = data.totalTasks || 0;
+      document.getElementById('completed-tasks').textContent = data.completedTasks || 0;
+      document.getElementById('active-goals').textContent = data.activeGoals || 0;
+      document.getElementById('mentor-sessions').textContent = data.mentorSessions || 0;
+
+      // Display activities
+      displayActivities(data.recentActivities || []);
+
+      // Render charts
+      renderProgressCharts(data);
+    }
+
+    // Load demo progress data
+    function loadDemoProgressData() {
+      const demoData = {
+        totalTasks: 24,
+        completedTasks: 18,
+        activeGoals: 5,
+        mentorSessions: 8,
+        progressTrend: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          data: [65, 72, 68, 75, 82, 78, 85]
+        },
+        taskDistribution: {
+          completed: 18,
+          inProgress: 4,
+          pending: 2
+        },
+        studySessions: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          data: [2, 3, 1, 4, 2, 3, 2]
+        },
+        subjectPerformance: {
+          labels: ['Mathematics', 'Physics', 'CS', 'English', 'Chemistry'],
+          data: [85, 78, 92, 75, 88]
+        },
+        recentActivities: [
+          {
+            type: 'task_completed',
+            title: 'Completed JavaScript Fundamentals Task',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+          },
+          {
+            type: 'mentor_session',
+            title: 'Attended mentorship session with Dr. Kumar',
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          },
+          {
+            type: 'goal_achieved',
+            title: 'Achieved goal: Complete 10 coding challenges',
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+          }
+        ]
+      };
+
+      displayProgressData(demoData);
+    }
+
+    // Display activities
+    function displayActivities(activities) {
       const activitiesList = document.getElementById('activities-list');
-      activitiesList.innerHTML = `
-        <div class="activity-item">
-          <div class="activity-icon"><i class="fas fa-check"></i></div>
-          <div class="activity-details">
-            <div class="activity-title">Completed JavaScript Fundamentals Task</div>
-            <div class="activity-time">2 hours ago</div>
+      
+      if (activities.length === 0) {
+        activitiesList.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: #666;">
+            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 10px; opacity: 0.3;"></i>
+            <p>No recent activities</p>
           </div>
-        </div>
-        <div class="activity-item">
-          <div class="activity-icon"><i class="fas fa-question"></i></div>
-          <div class="activity-details">
-            <div class="activity-title">Asked doubt about React hooks</div>
-            <div class="activity-time">1 day ago</div>
+        `;
+        return;
+      }
+
+      const html = activities.map(activity => {
+        const icon = getActivityIcon(activity.type);
+        const timeAgo = getTimeAgo(activity.timestamp);
+        
+        return `
+          <div class="activity-item">
+            <div class="activity-icon">${icon}</div>
+            <div class="activity-details">
+              <div class="activity-title">${activity.title}</div>
+              <div class="activity-time">${timeAgo}</div>
+            </div>
           </div>
-        </div>
-        <div class="activity-item">
-          <div class="activity-icon"><i class="fas fa-video"></i></div>
-          <div class="activity-details">
-            <div class="activity-title">Attended mentorship session</div>
-            <div class="activity-time">3 days ago</div>
-          </div>
-        </div>
-      `;
+        `;
+      }).join('');
+
+      activitiesList.innerHTML = html;
+    }
+
+    // Get activity icon
+    function getActivityIcon(type) {
+      const icons = {
+        'task_completed': '<i class="fas fa-check-circle" style="color: #10b981;"></i>',
+        'mentor_session': '<i class="fas fa-video" style="color: #3b82f6;"></i>',
+        'goal_achieved': '<i class="fas fa-star" style="color: #f59e0b;"></i>',
+        'study_session': '<i class="fas fa-book-open" style="color: #8b5cf6;"></i>',
+        'group_joined': '<i class="fas fa-users" style="color: #ec4899;"></i>'
+      };
+      return icons[type] || '<i class="fas fa-circle" style="color: #6b7280;"></i>';
+    }
+
+    // Render all progress charts
+    function renderProgressCharts(data) {
+      // Destroy existing charts
+      if (progressTrendChart) progressTrendChart.destroy();
+      if (taskDistributionChart) taskDistributionChart.destroy();
+      if (studySessionsChart) studySessionsChart.destroy();
+      if (subjectPerformanceChart) subjectPerformanceChart.destroy();
+
+      // Overall Progress Trend Chart (Line)
+      const trendCtx = document.getElementById('progressTrendChart');
+      if (trendCtx) {
+        progressTrendChart = new Chart(trendCtx.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: data.progressTrend?.labels || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+              label: 'Progress Score',
+              data: data.progressTrend?.data || [0, 0, 0, 0, 0, 0, 0],
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100
+              }
+            }
+          }
+        });
+      }
+
+      // Task Distribution Chart (Doughnut)
+      const taskCtx = document.getElementById('taskDistributionChart');
+      if (taskCtx) {
+        taskDistributionChart = new Chart(taskCtx.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Completed', 'In Progress', 'Pending'],
+            datasets: [{
+              data: [
+                data.taskDistribution?.completed || 0,
+                data.taskDistribution?.inProgress || 0,
+                data.taskDistribution?.pending || 0
+              ],
+              backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        });
+      }
+
+      // Study Sessions Chart (Bar)
+      const sessionsCtx = document.getElementById('studySessionsChart');
+      if (sessionsCtx) {
+        studySessionsChart = new Chart(sessionsCtx.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: data.studySessions?.labels || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+              label: 'Sessions',
+              data: data.studySessions?.data || [0, 0, 0, 0, 0, 0, 0],
+              backgroundColor: '#8b5cf6'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Subject Performance Chart (Radar)
+      const subjectCtx = document.getElementById('subjectPerformanceChart');
+      if (subjectCtx) {
+        subjectPerformanceChart = new Chart(subjectCtx.getContext('2d'), {
+          type: 'radar',
+          data: {
+            labels: data.subjectPerformance?.labels || ['Math', 'Science', 'CS', 'English', 'History'],
+            datasets: [{
+              label: 'Performance',
+              data: data.subjectPerformance?.data || [0, 0, 0, 0, 0],
+              borderColor: '#ec4899',
+              backgroundColor: 'rgba(236, 72, 153, 0.2)'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 100
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
     }
 
     // ==================== CHAT SYSTEM ====================
