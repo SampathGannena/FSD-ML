@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: fsd-ml-backend
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: |
+      cd Backend
+      npm install
+      cd ml
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      cd ../..
+    startCommand: cd Backend && node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 3000
+    autoDeploy: true

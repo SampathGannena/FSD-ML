@@ -10,6 +10,7 @@ const groupRoutes = require('./routes/groupRoutes');
 const groupStatsRoutes = require('./routes/groupStatsRoutes');
 const videoRoomRoutes = require('./routes/videoRoomRoutes');
 const studySessionRoutes = require('./routes/studySessionRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
 const cors = require('cors');
 const path = require('path');
@@ -101,6 +102,7 @@ app.use('/api', profileRoutes);
 app.use('/api/video-rooms', videoRoomRoutes);
 app.use('/api/sessions', studySessionRoutes);
 app.use('/api/groups', groupStatsRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // ============ MENTOR AVAILABILITY ENDPOINTS ============
 
