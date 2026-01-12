@@ -144,6 +144,43 @@
 
         <!-- Discussions Tab -->
         <div class="tab-content" id="discussions-tab">
+          <div class="discussions-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div class="discussions-filters" style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <input type="text" id="discussion-search" placeholder="🔍 Search discussions..." 
+                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px; width: 250px;"
+                onkeyup="filterDiscussions()">
+              
+              <select id="discussion-category-filter" onchange="filterDiscussions()" 
+                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <option value="">All Categories</option>
+                <option value="question">❓ Questions</option>
+                <option value="resource">📚 Resources</option>
+                <option value="discussion">💬 General Discussion</option>
+                <option value="announcement">📢 Announcements</option>
+              </select>
+
+              <select id="discussion-status-filter" onchange="filterDiscussions()" 
+                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <option value="">All Status</option>
+                <option value="open">🟢 Open</option>
+                <option value="answered">✅ Answered</option>
+                <option value="closed">🔒 Closed</option>
+              </select>
+
+              <select id="discussion-sort" onchange="sortDiscussions()" 
+                style="padding: 8px 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <option value="recent">🕐 Most Recent</option>
+                <option value="popular">🔥 Most Popular</option>
+                <option value="unanswered">❔ Unanswered</option>
+              </select>
+            </div>
+
+            <button class="btn-primary" onclick="showNewDiscussionModal()" 
+              style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
+              <i class="fas fa-plus"></i> New Discussion
+            </button>
+          </div>
+
           <div class="discussions-container" id="discussions-container">
             <!-- Discussions will be loaded here -->
           </div>
@@ -351,6 +388,90 @@
             <i class="fas fa-paper-plane"></i> Submit Doubt
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Discussion Modal -->
+  <div class="modal" id="newDiscussionModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-comments"></i> Start New Discussion</h3>
+        <span class="close" onclick="closeNewDiscussionModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="new-discussion-form">
+          <div class="form-group">
+            <label>Discussion Title *</label>
+            <input type="text" id="new-discussion-title" placeholder="What would you like to discuss?" required 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+          </div>
+          
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="new-discussion-category" required 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+              <option value="">Select category</option>
+              <option value="question">❓ Question - Ask for help</option>
+              <option value="resource">📚 Resource - Share learning materials</option>
+              <option value="discussion">💬 General Discussion - Open conversation</option>
+              <option value="announcement">📢 Announcement - Important updates</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Subject/Topic</label>
+            <select id="new-discussion-subject" 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+              <option value="">General</option>
+              <option value="mathematics">Mathematics</option>
+              <option value="physics">Physics</option>
+              <option value="computer-science">Computer Science</option>
+              <option value="chemistry">Chemistry</option>
+              <option value="english">English</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Description *</label>
+            <textarea id="new-discussion-description" rows="6" 
+              placeholder="Provide details about your discussion..." required 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Tags (Optional)</label>
+            <input type="text" id="new-discussion-tags" 
+              placeholder="E.g., algebra, python, essay-writing (comma separated)" 
+              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <small style="color: #666; font-size: 0.85em;">Add tags to make your discussion easier to find</small>
+          </div>
+        </form>
+        
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeNewDiscussionModal()" 
+            style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Cancel
+          </button>
+          <button class="btn-primary" onclick="submitNewDiscussion()" 
+            style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            <i class="fas fa-paper-plane"></i> Post Discussion
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Discussion Modal -->
+  <div class="modal" id="viewDiscussionModal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-comments"></i> Discussion Thread</h3>
+        <span class="close" onclick="closeViewDiscussionModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="discussion-thread-content" style="max-height: 600px; overflow-y: auto;">
+        <!-- Discussion thread will be loaded here -->
       </div>
     </div>
   </div>
@@ -953,6 +1074,526 @@
       container.innerHTML = html;
     }
 
+    // ==================== DISCUSSIONS SYSTEM ====================
+    
+    let discussions = [];
+    let allDiscussions = [];
+    let currentDiscussion = null;
+
+    // Load discussions
+    async function loadDiscussions() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.log('No token found, showing demo discussions');
+          loadDemoDiscussions();
+          return;
+        }
+
+        const response = await fetch(`${window.location.origin}/api/auth/discussions`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          discussions = data.discussions || [];
+          allDiscussions = [...discussions];
+        } else {
+          console.log('Failed to load discussions, showing demo data');
+          loadDemoDiscussions();
+        }
+
+        displayDiscussions(discussions);
+
+      } catch (error) {
+        console.error('Error loading discussions:', error);
+        loadDemoDiscussions();
+      }
+    }
+
+    // Load demo discussions
+    function loadDemoDiscussions() {
+      discussions = [
+        {
+          id: 1,
+          title: 'Best resources for learning Data Structures and Algorithms?',
+          description: 'I\'m preparing for coding interviews and need recommendations for DSA resources. What worked best for you?',
+          category: 'resource',
+          subject: 'computer-science',
+          author: {
+            name: 'Rahul Kumar',
+            avatar: 'RK'
+          },
+          status: 'open',
+          replies: 12,
+          upvotes: 25,
+          tags: ['dsa', 'coding', 'interview-prep'],
+          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+          lastActivity: new Date(Date.now() - 30 * 60 * 1000)
+        },
+        {
+          id: 2,
+          title: 'Help needed with React useEffect dependencies',
+          description: 'I\'m getting infinite loop in useEffect. Can someone explain how dependency array works?',
+          category: 'question',
+          subject: 'computer-science',
+          author: {
+            name: 'Priya Sharma',
+            avatar: 'PS'
+          },
+          status: 'answered',
+          replies: 8,
+          upvotes: 15,
+          tags: ['react', 'javascript', 'hooks'],
+          createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+          lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: 3,
+          title: 'Study group forming for Machine Learning course',
+          description: 'Looking for 3-4 people to form a study group for Andrew Ng\'s ML course. Interested?',
+          category: 'discussion',
+          subject: 'computer-science',
+          author: {
+            name: 'Amit Patel',
+            avatar: 'AP'
+          },
+          status: 'open',
+          replies: 5,
+          upvotes: 8,
+          tags: ['machine-learning', 'study-group'],
+          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          lastActivity: new Date(Date.now() - 12 * 60 * 60 * 1000)
+        },
+        {
+          id: 4,
+          title: 'Calculus II - Integration techniques cheat sheet',
+          description: 'I made a comprehensive cheat sheet for integration techniques. Hope it helps!',
+          category: 'resource',
+          subject: 'mathematics',
+          author: {
+            name: 'Sneha Reddy',
+            avatar: 'SR'
+          },
+          status: 'closed',
+          replies: 20,
+          upvotes: 45,
+          tags: ['calculus', 'mathematics', 'cheat-sheet'],
+          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          lastActivity: new Date(Date.now() - 18 * 60 * 60 * 1000)
+        },
+        {
+          id: 5,
+          title: 'Tips for effective group study sessions?',
+          description: 'What strategies do you use to make group study sessions productive? Share your best practices!',
+          category: 'discussion',
+          subject: '',
+          author: {
+            name: 'Vikram Singh',
+            avatar: 'VS'
+          },
+          status: 'open',
+          replies: 15,
+          upvotes: 30,
+          tags: ['study-tips', 'productivity'],
+          createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+          lastActivity: new Date(Date.now() - 6 * 60 * 60 * 1000)
+        }
+      ];
+      allDiscussions = [...discussions];
+      displayDiscussions(discussions);
+    }
+
+    // Display discussions
+    function displayDiscussions(discussionList) {
+      const container = document.getElementById('discussions-container');
+      
+      if (discussionList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+            <p>No discussions found</p>
+            <p style="font-size: 0.9rem;">Be the first to start a discussion!</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = discussionList.map(discussion => {
+        const timeAgo = getTimeAgo(discussion.createdAt);
+        const lastActivityAgo = getTimeAgo(discussion.lastActivity);
+        const statusColor = discussion.status === 'answered' ? '#10b981' : discussion.status === 'closed' ? '#6b7280' : '#3b82f6';
+        const categoryIcon = getCategoryIcon(discussion.category);
+        
+        return `
+          <div class="discussion-card" onclick="viewDiscussion(${discussion.id})" 
+            style="background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;"
+            onmouseover="this.style.transform='translateY(-2px)'" 
+            onmouseout="this.style.transform='translateY(0)'">
+            
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <span style="background: ${statusColor}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">
+                    ${categoryIcon} ${discussion.category.charAt(0).toUpperCase() + discussion.category.slice(1)}
+                  </span>
+                  ${discussion.subject ? `<span style="color: #6b7280; font-size: 0.85rem;">📚 ${discussion.subject}</span>` : ''}
+                  <span style="padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; background: ${statusColor}20; color: ${statusColor};">
+                    ${discussion.status.toUpperCase()}
+                  </span>
+                </div>
+                
+                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 1.1rem;">
+                  ${discussion.title}
+                </h4>
+                
+                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 0.95rem; line-height: 1.5;">
+                  ${discussion.description.substring(0, 150)}${discussion.description.length > 150 ? '...' : ''}
+                </p>
+                
+                ${discussion.tags && discussion.tags.length > 0 ? `
+                  <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px;">
+                    ${discussion.tags.map(tag => `
+                      <span style="background: #e5e7eb; color: #4b5563; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem;">
+                        #${tag}
+                      </span>
+                    `).join('')}
+                  </div>
+                ` : ''}
+                
+                <div style="display: flex; align-items: center; gap: 20px; color: #6b7280; font-size: 0.85rem;">
+                  <span style="display: flex; align-items: center; gap: 5px;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">
+                      ${discussion.author.avatar}
+                    </div>
+                    ${discussion.author.name}
+                  </span>
+                  <span><i class="fas fa-clock"></i> ${timeAgo}</span>
+                  <span><i class="fas fa-comments"></i> ${discussion.replies} replies</span>
+                  <span><i class="fas fa-arrow-up"></i> ${discussion.upvotes} upvotes</span>
+                  <span style="color: #10b981;"><i class="fas fa-bolt"></i> Active ${lastActivityAgo}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    // Get category icon
+    function getCategoryIcon(category) {
+      const icons = {
+        'question': '❓',
+        'resource': '📚',
+        'discussion': '💬',
+        'announcement': '📢'
+      };
+      return icons[category] || '💬';
+    }
+
+    // Filter discussions
+    function filterDiscussions() {
+      const searchTerm = document.getElementById('discussion-search').value.toLowerCase();
+      const categoryFilter = document.getElementById('discussion-category-filter').value;
+      const statusFilter = document.getElementById('discussion-status-filter').value;
+      
+      let filtered = allDiscussions.filter(discussion => {
+        const matchesSearch = discussion.title.toLowerCase().includes(searchTerm) || 
+                             discussion.description.toLowerCase().includes(searchTerm) ||
+                             (discussion.tags && discussion.tags.some(tag => tag.includes(searchTerm)));
+        const matchesCategory = !categoryFilter || discussion.category === categoryFilter;
+        const matchesStatus = !statusFilter || discussion.status === statusFilter;
+        
+        return matchesSearch && matchesCategory && matchesStatus;
+      });
+
+      discussions = filtered;
+      sortDiscussions();
+    }
+
+    // Sort discussions
+    function sortDiscussions() {
+      const sortBy = document.getElementById('discussion-sort').value;
+      
+      let sorted = [...discussions];
+      
+      if (sortBy === 'recent') {
+        sorted.sort((a, b) => b.lastActivity - a.lastActivity);
+      } else if (sortBy === 'popular') {
+        sorted.sort((a, b) => b.upvotes - a.upvotes);
+      } else if (sortBy === 'unanswered') {
+        sorted.sort((a, b) => {
+          if (a.status === 'open' && b.status !== 'open') return -1;
+          if (a.status !== 'open' && b.status === 'open') return 1;
+          return a.replies - b.replies;
+        });
+      }
+      
+      displayDiscussions(sorted);
+    }
+
+    // Show new discussion modal
+    function showNewDiscussionModal() {
+      document.getElementById('newDiscussionModal').style.display = 'flex';
+      document.getElementById('new-discussion-form').reset();
+    }
+
+    // Close new discussion modal
+    function closeNewDiscussionModal() {
+      document.getElementById('newDiscussionModal').style.display = 'none';
+    }
+
+    // Submit new discussion
+    async function submitNewDiscussion() {
+      const discussionData = {
+        title: document.getElementById('new-discussion-title').value,
+        category: document.getElementById('new-discussion-category').value,
+        subject: document.getElementById('new-discussion-subject').value,
+        description: document.getElementById('new-discussion-description').value,
+        tags: document.getElementById('new-discussion-tags').value.split(',').map(t => t.trim()).filter(t => t)
+      };
+
+      if (!discussionData.title || !discussionData.category || !discussionData.description) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${window.location.origin}/api/auth/discussions/create`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(discussionData)
+        });
+
+        if (response.ok) {
+          showNotificationToast({
+            type: 'success',
+            title: 'Discussion Posted',
+            message: 'Your discussion has been posted successfully'
+          });
+        } else {
+          showNotificationToast({
+            type: 'error',
+            title: 'Failed to Post',
+            message: 'Could not post discussion. Please try again.'
+          });
+        }
+
+        closeNewDiscussionModal();
+        loadDiscussions();
+        
+      } catch (error) {
+        console.error('Error creating discussion:', error);
+        // Demo: Add to local array
+        const newDiscussion = {
+          id: discussions.length + 1,
+          ...discussionData,
+          author: {
+            name: 'You',
+            avatar: 'ME'
+          },
+          status: 'open',
+          replies: 0,
+          upvotes: 0,
+          createdAt: new Date(),
+          lastActivity: new Date()
+        };
+        
+        discussions.unshift(newDiscussion);
+        allDiscussions.unshift(newDiscussion);
+        
+        showNotificationToast({
+          type: 'success',
+          title: 'Discussion Posted',
+          message: 'Your discussion has been posted successfully'
+        });
+        
+        closeNewDiscussionModal();
+        displayDiscussions(discussions);
+      }
+    }
+
+    // View discussion
+    function viewDiscussion(discussionId) {
+      currentDiscussion = allDiscussions.find(d => d.id === discussionId);
+      
+      if (!currentDiscussion) return;
+      
+      const modal = document.getElementById('viewDiscussionModal');
+      const content = document.getElementById('discussion-thread-content');
+      
+      // Generate demo replies
+      const demoReplies = [
+        {
+          id: 1,
+          author: { name: 'Expert User', avatar: 'EU' },
+          content: 'Great question! I recommend checking out LeetCode and GeeksforGeeks for practice problems.',
+          upvotes: 8,
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: 2,
+          author: { name: 'Student Helper', avatar: 'SH' },
+          content: 'I found "Cracking the Coding Interview" book really helpful. Also try AlgoExpert.',
+          upvotes: 5,
+          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
+        }
+      ];
+      
+      content.innerHTML = `
+        <div class="discussion-detail">
+          <!-- Original Post -->
+          <div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+              <span style="background: ${currentDiscussion.status === 'answered' ? '#10b981' : '#3b82f6'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem;">
+                ${getCategoryIcon(currentDiscussion.category)} ${currentDiscussion.category}
+              </span>
+              ${currentDiscussion.subject ? `<span style="color: #6b7280;">📚 ${currentDiscussion.subject}</span>` : ''}
+            </div>
+            
+            <h3 style="margin: 0 0 15px 0; color: #1f2937;">${currentDiscussion.title}</h3>
+            
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 15px;">${currentDiscussion.description}</p>
+            
+            ${currentDiscussion.tags && currentDiscussion.tags.length > 0 ? `
+              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px;">
+                ${currentDiscussion.tags.map(tag => `
+                  <span style="background: #e5e7eb; color: #4b5563; padding: 3px 10px; border-radius: 8px; font-size: 0.8rem;">
+                    #${tag}
+                  </span>
+                `).join('')}
+              </div>
+            ` : ''}
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                  ${currentDiscussion.author.avatar}
+                </div>
+                <div>
+                  <div style="font-weight: 500; color: #1f2937;">${currentDiscussion.author.name}</div>
+                  <div style="font-size: 0.85rem; color: #6b7280;">${getTimeAgo(currentDiscussion.createdAt)}</div>
+                </div>
+              </div>
+              
+              <button onclick="upvoteDiscussion(${currentDiscussion.id})" 
+                style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                <i class="fas fa-arrow-up"></i> <strong>${currentDiscussion.upvotes}</strong>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Replies Section -->
+          <div style="margin-top: 30px;">
+            <h4 style="color: #1f2937; margin-bottom: 15px;">
+              <i class="fas fa-comments"></i> ${currentDiscussion.replies} Replies
+            </h4>
+            
+            ${demoReplies.map(reply => `
+              <div style="background: white; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: start; justify-content: space-between;">
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold;">
+                        ${reply.author.avatar}
+                      </div>
+                      <div>
+                        <div style="font-weight: 500; color: #1f2937; font-size: 0.9rem;">${reply.author.name}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">${getTimeAgo(reply.createdAt)}</div>
+                      </div>
+                    </div>
+                    <p style="color: #4b5563; margin: 0; line-height: 1.6;">${reply.content}</p>
+                  </div>
+                  
+                  <button onclick="upvoteReply(${reply.id})" 
+                    style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                    <i class="fas fa-arrow-up"></i> ${reply.upvotes}
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+            
+            <!-- Add Reply Form -->
+            <div style="margin-top: 20px; background: #f9fafb; padding: 20px; border-radius: 8px;">
+              <h5 style="margin: 0 0 10px 0; color: #1f2937;">Add Your Reply</h5>
+              <textarea id="reply-content" rows="4" 
+                placeholder="Share your thoughts..." 
+                style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;"></textarea>
+              <button onclick="submitReply()" 
+                style="margin-top: 10px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-paper-plane"></i> Post Reply
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      modal.style.display = 'flex';
+    }
+
+    // Close view discussion modal
+    function closeViewDiscussionModal() {
+      document.getElementById('viewDiscussionModal').style.display = 'none';
+      currentDiscussion = null;
+    }
+
+    // Upvote discussion
+    function upvoteDiscussion(discussionId) {
+      const discussion = allDiscussions.find(d => d.id === discussionId);
+      if (discussion) {
+        discussion.upvotes++;
+        showNotificationToast({
+          type: 'success',
+          title: 'Upvoted!',
+          message: 'You upvoted this discussion'
+        });
+        viewDiscussion(discussionId); // Refresh view
+      }
+    }
+
+    // Upvote reply
+    function upvoteReply(replyId) {
+      showNotificationToast({
+        type: 'success',
+        title: 'Upvoted!',
+        message: 'You upvoted this reply'
+      });
+    }
+
+    // Submit reply
+    function submitReply() {
+      const content = document.getElementById('reply-content').value;
+      
+      if (!content.trim()) {
+        alert('Please enter a reply');
+        return;
+      }
+      
+      showNotificationToast({
+        type: 'success',
+        title: 'Reply Posted',
+        message: 'Your reply has been added'
+      });
+      
+      document.getElementById('reply-content').value = '';
+      
+      if (currentDiscussion) {
+        currentDiscussion.replies++;
+        currentDiscussion.lastActivity = new Date();
+        viewDiscussion(currentDiscussion.id); // Refresh view
+      }
+    }
+
     // Filter doubts
     function filterDoubts() {
       const filter = document.getElementById('doubt-filter').value;
@@ -963,18 +1604,6 @@
       }
       
       displayDoubts(filtered);
-    }
-
-    // Load discussions
-    function loadDiscussions() {
-      const container = document.getElementById('discussions-container');
-      container.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-          <p>Discussions feature coming soon!</p>
-          <p style="font-size: 0.9rem;">This will show group discussions and peer interactions.</p>
-        </div>
-      `;
     }
 
     // Chart instances
