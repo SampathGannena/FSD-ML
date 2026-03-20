@@ -8,6 +8,15 @@ if (hamburger && navLinks) {
     });
 }
 
+function initializeNavbarScrollState() {
+    const updateState = () => {
+        document.body.classList.toggle('nav-scrolled', window.scrollY > 24);
+    };
+
+    updateState();
+    window.addEventListener('scroll', updateState, { passive: true });
+}
+
 // Smooth scrolling for navbar links
 document.querySelectorAll('.nav-links a').forEach((link) => {
     link.addEventListener('click', function (e) {
@@ -32,6 +41,8 @@ document.querySelectorAll('.nav-links a').forEach((link) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeNavbarScrollState();
+
     if (typeof window.initializeDynamicPricing === 'function') {
         window.initializeDynamicPricing({
             rootSelector: '[data-pricing-scope="landing"]',

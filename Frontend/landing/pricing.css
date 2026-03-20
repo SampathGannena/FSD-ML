@@ -31,12 +31,33 @@ body.pricing-page {
 }
 
 .pricing-nav {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1320px, calc(100% - 44px));
     max-width: 1180px;
-    margin: 0 auto;
+    margin: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 20px;
+    padding: 12px 26px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(6, 10, 18, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+    transition: transform 0.35s ease, background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, top 0.35s ease;
+}
+
+body.nav-scrolled .pricing-nav {
+    top: 10px;
+    transform: translateX(-50%) scale(0.985);
+    background: rgba(4, 8, 16, 0.85);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
 }
 
 .pricing-brand {
@@ -81,7 +102,7 @@ body.pricing-page {
 
 .pricing-hero-content {
     max-width: 820px;
-    margin: 78px auto 0;
+    margin: 132px auto 0;
     text-align: center;
 }
 

@@ -1,5 +1,7 @@
 (function () {
     window.STUDYFINDER_PRICING = {
+        currencySymbol: "₹",
+        currencyCode: "INR",
         discountPercent: 20,
         plans: [
             {
@@ -23,8 +25,8 @@
                 badge: "Most Popular",
                 badgeClass: "popular",
                 subtitle: "Ideal for active learners",
-                monthly: 9.99,
-                yearly: 95.9,
+                monthly: 799,
+                yearly: 7670,
                 featured: true,
                 features: [
                     "Everything in Starter",
@@ -41,8 +43,8 @@
                 name: "Enterprise",
                 badge: "Pro",
                 subtitle: "For institutions and teams",
-                monthly: 29.99,
-                yearly: 287.9,
+                monthly: 2399,
+                yearly: 23030,
                 features: [
                     "Everything in Premium",
                     "Collaborative code editor and whiteboard",

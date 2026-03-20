@@ -27,6 +27,7 @@
             <li><a href="#home" >Home</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#about">About Us</a></li>
+          <li><a href="/landing/pricing.html?from=user-dashboard&returnTo=%2FDashboards%2Fmain.html">Pricing</a></li>
             <li><a href="../Dashboards/profile.html">Profile</a></li>
             <li>
                 <a href="#" class="notification-bell" onclick="toggleNotifications()" title="Notifications">
@@ -517,6 +518,7 @@
           <li><a href="#home">Home</a></li>
           <li><a href="#features">Features</a></li>
           <li><a href="#about">About</a></li>
+          <li><a href="/landing/pricing.html?from=user-dashboard&returnTo=%2FDashboards%2Fmain.html">Pricing</a></li>
           <li><a href="../Dashboards/profile.html">Profile</a></li>
           <li><a href="../ml_model/input.html">Find Group</a></li>
         </ul>
@@ -1930,7 +1932,36 @@
 
     // ==================== INITIALIZATION ====================
 
+    let navbarEffectsInitialized = false;
+    function initializeNavbarEffects() {
+      if (navbarEffectsInitialized) {
+        return;
+      }
+      navbarEffectsInitialized = true;
+
+      const navbar = document.querySelector('.navbar');
+      const hamburger = document.querySelector('.hamburger');
+      const navLinks = document.querySelector('.nav-links');
+
+      if (hamburger && navLinks) {
+        hamburger.addEventListener('click', () => {
+          navLinks.classList.toggle('active');
+        });
+      }
+
+      if (navbar) {
+        const updateNavState = () => {
+          document.body.classList.toggle('nav-scrolled', window.scrollY > 24);
+        };
+
+        updateNavState();
+        window.addEventListener('scroll', updateNavState, { passive: true });
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+      initializeNavbarEffects();
+
       // Load initial data
       loadMentors();
       
@@ -2293,6 +2324,8 @@
 
     // Initialize notifications on page load
     document.addEventListener('DOMContentLoaded', function() {
+      initializeNavbarEffects();
+
       // Request notification permission
       if (Notification.permission === 'default') {
         Notification.requestPermission();

@@ -2,11 +2,19 @@
     const PLAN_STORAGE_KEY = "studyfinder.selectedPlan.v1";
     const BILLING_STORAGE_KEY = "studyfinder.billingPreference.v1";
 
-    function toCurrencyAmount(amount) {
-        if (Number.isInteger(amount)) {
-            return String(amount);
+    function toCurrencyAmount(amount, currencyCode) {
+        const numeric = Number(amount);
+        if (!Number.isFinite(numeric)) {
+            return "0";
         }
-        return Number(amount).toFixed(2);
+
+        const isWhole = Number.isInteger(numeric);
+        const locale = currencyCode === "INR" ? "en-IN" : "en-US";
+
+        return new Intl.NumberFormat(locale, {
+            minimumFractionDigits: isWhole ? 0 : 2,
+            maximumFractionDigits: isWhole ? 0 : 2
+        }).format(numeric);
     }
 
     function escapeHtml(text) {
@@ -36,6 +44,19 @@
         localStorage.setItem(key, JSON.stringify(value));
     }
 
+    function getTokenIssuedAt(token) {
+        try {
+            const parts = String(token || "").split(".");
+            if (parts.length < 2) {
+                return 0;
+            }
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+            return Number(payload.iat || 0);
+        } catch (error) {
+            return 0;
+        }
+    }
+
     async function fetchProfile(endpoint, token) {
         const response = await fetch(`${window.location.origin}${endpoint}`, {
             headers: {
@@ -51,10 +72,15 @@
     }
 
     async function resolveUserContext() {
+        const activeRole = localStorage.getItem("activeAuthRole") || "";
         const learnerToken = localStorage.getItem("token");
         const mentorToken = localStorage.getItem("mentorToken");
 
-        if (learnerToken) {
+        async function resolveLearner() {
+            if (!learnerToken) {
+                return null;
+            }
+
             try {
                 const profile = await fetchProfile("/api/profile", learnerToken);
                 return {
@@ -76,7 +102,11 @@
             }
         }
 
-        if (mentorToken) {
+        async function resolveMentor() {
+            if (!mentorToken) {
+                return null;
+            }
+
             try {
                 const profileData = await fetchProfile("/api/mentor/profile", mentorToken);
                 const profile = profileData.profile || {};
@@ -96,6 +126,39 @@
                     name: localStorage.getItem("mentorName") || "Mentor",
                     token: mentorToken
                 };
+            }
+        }
+
+        if (activeRole === "mentor") {
+            const mentorContext = await resolveMentor();
+            if (mentorContext) {
+                return mentorContext;
+            }
+
+            const learnerContext = await resolveLearner();
+            if (learnerContext) {
+                return learnerContext;
+            }
+        } else {
+            const preferMentor = !activeRole && learnerToken && mentorToken
+                ? getTokenIssuedAt(mentorToken) > getTokenIssuedAt(learnerToken)
+                : false;
+
+            if (preferMentor) {
+                const mentorContext = await resolveMentor();
+                if (mentorContext) {
+                    return mentorContext;
+                }
+            }
+
+            const learnerContext = await resolveLearner();
+            if (learnerContext) {
+                return learnerContext;
+            }
+
+            const mentorContext = await resolveMentor();
+            if (mentorContext) {
+                return mentorContext;
             }
         }
 
@@ -258,6 +321,8 @@
         selectedPlanId
     }) {
         const discountPercent = pricingData.discountPercent || 20;
+        const currencySymbol = pricingData.currencySymbol || "$";
+        const currencyCode = pricingData.currencyCode || "USD";
 
         const cards = pricingData.plans.map((plan) => {
             const price = getPriceForBilling(plan, billing, discountPercent);
@@ -273,7 +338,7 @@
             }
 
             const yearlyNote = billing === "yearly" && price > 0
-                ? `<div class="price-note">Billed yearly at $${toCurrencyAmount(price)}</div>`
+                ? `<div class="price-note">Billed yearly at ${escapeHtml(currencySymbol)}${toCurrencyAmount(price, currencyCode)}</div>`
                 : "";
 
             const periodLabel = billing === "yearly" ? "/year" : "/month";
@@ -288,8 +353,8 @@
                     <h3>${escapeHtml(plan.name)}</h3>
                     <p class="plan-meta">${escapeHtml(plan.subtitle || "")}</p>
                     <div class="price">
-                        <span class="currency">$</span>
-                        <span class="amount">${toCurrencyAmount(price)}</span>
+                        <span class="currency">${escapeHtml(currencySymbol)}</span>
+                        <span class="amount">${toCurrencyAmount(price, currencyCode)}</span>
                         <span class="period">${periodLabel}</span>
                         ${yearlyNote}
                     </div>
@@ -400,6 +465,7 @@
             }
 
             if (action === "select") {
+                const previousPlanId = selectedPlanId;
                 try {
                     selectedPlanId = planId;
                     setSelectedPlanId(userContext, selectedPlanId, billing);
@@ -415,6 +481,8 @@
                     }
                 } catch (error) {
                     console.error("Failed to save subscription on server:", error);
+                    selectedPlanId = previousPlanId;
+                    setSelectedPlanId(userContext, selectedPlanId, billing);
                     showErrorMessage("Plan was saved locally, but server update failed.");
                 }
 

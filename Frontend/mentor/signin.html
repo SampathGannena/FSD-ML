@@ -69,6 +69,10 @@
                     console.log('✅ Mentor signin successful:', result);
                     
                     // Store mentor token and info
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userName');
+                    localStorage.setItem('activeAuthRole', 'mentor');
                     localStorage.setItem('mentorToken', result.token);
                     
                     if (result.mentor) {

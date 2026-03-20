@@ -1,6 +1,48 @@
 (function () {
+  function getTokenIssuedAt(token) {
+    try {
+      const parts = String(token || '').split('.');
+      if (parts.length < 2) return 0;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return Number(payload.iat || 0);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function getActiveAuthRole() {
+    return localStorage.getItem('activeAuthRole') || '';
+  }
+
   function getAuthToken() {
-    return localStorage.getItem('token') || localStorage.getItem('mentorToken') || '';
+    const role = getActiveAuthRole();
+    const userToken = localStorage.getItem('token') || '';
+    const mentorToken = localStorage.getItem('mentorToken') || '';
+
+    if (role === 'mentor' && mentorToken) {
+      return mentorToken;
+    }
+
+    if ((role === 'user' || role === 'learner') && userToken) {
+      return userToken;
+    }
+
+    if (userToken && !mentorToken) {
+      return userToken;
+    }
+
+    if (mentorToken && !userToken) {
+      return mentorToken;
+    }
+
+    if (userToken && mentorToken) {
+      const userIssuedAt = getTokenIssuedAt(userToken);
+      const mentorIssuedAt = getTokenIssuedAt(mentorToken);
+      return mentorIssuedAt > userIssuedAt ? mentorToken : userToken;
+    }
+
+    // Backward-compatible fallback when role is not set.
+    return userToken || mentorToken || '';
   }
 
   function planDisplayName(plan) {
@@ -79,6 +121,7 @@
   }
 
   window.SubscriptionAccess = {
+    getActiveAuthRole,
     getAuthToken,
     checkFeatureAccess,
     ensureFeatureAccess

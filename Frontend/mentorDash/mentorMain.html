@@ -27,6 +27,7 @@
             <li><a href="mentorAdvancedDashboard.html">Advanced Dashboard</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#about">About Us</a></li>
+          <li><a href="/landing/pricing.html?from=mentor-dashboard&returnTo=%2FmentorDash%2FmentorMain.html">Pricing</a></li>
             <li><a href="Mprofile.html">Profile</a></li>
             <!-- <li><a href="#cta">Contact Us</a></li> -->
         </ul>
@@ -188,6 +189,7 @@
           <li><a href="#home">Home</a></li>
           <li><a href="#features">Features</a></li>
           <li><a href="#about">About</a></li>
+          <li><a href="/landing/pricing.html?from=mentor-dashboard&returnTo=%2FmentorDash%2FmentorMain.html">Pricing</a></li>
           <li><a href="../mentorDash/Mprofile.html">Profile</a></li>
           <li><a href="../ml_model/input.html">Find Mentees</a></li>
         </ul>
@@ -1087,6 +1089,12 @@
     // Hamburger menu toggle
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
+    const updateNavState = () => {
+      document.body.classList.toggle('nav-scrolled', window.scrollY > 24);
+    };
+
+    updateNavState();
+    window.addEventListener('scroll', updateNavState, { passive: true });
 
     if (hamburger) {
       hamburger.addEventListener('click', () => {
