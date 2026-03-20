@@ -64,6 +64,45 @@
       background-color: rgba(255, 75, 43, 0.1);
     }
 
+    .groups-refresh-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: -6px 0 10px;
+      font-size: 0.72rem;
+      color: #8f8f8f;
+      min-height: 16px;
+    }
+
+    .groups-refresh-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+      flex-shrink: 0;
+    }
+
+    .groups-refresh-dot.loading {
+      background: #f59e0b;
+      box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+      animation: refreshPulse 1s infinite;
+    }
+
+    .groups-refresh-dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+    }
+
+    .groups-refresh-time {
+      color: #a7a7a7;
+    }
+
+    @keyframes refreshPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
     .groups-container {
       flex-grow: 1;
       overflow-y: auto;
@@ -162,6 +201,18 @@
       color: #999;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .stat-value.video-status.video-live {
+      color: #22c55e;
+    }
+
+    .stat-value.video-status.video-waiting {
+      color: #f59e0b;
+    }
+
+    .stat-value.video-status.video-idle {
+      color: #9ca3af;
     }
 
     .group-members {
@@ -3248,6 +3299,11 @@
           <i class="fas fa-sync-alt"></i>
         </button>
       </h2>
+      <div class="groups-refresh-meta" id="groups-refresh-meta" aria-live="polite">
+        <span class="groups-refresh-dot" id="groups-refresh-dot"></span>
+        <span id="groups-refresh-label">Auto-refreshing</span>
+        <span class="groups-refresh-time" id="groups-refresh-time">Last updated: --</span>
+      </div>
       <div class="groups-container" id="groups-container">
         <!-- Dynamic group cards will be inserted here -->
       </div>
@@ -3328,11 +3384,59 @@
     // Global variables
     let socket;
     let selectedGroupName = null;
+    let selectedGroupId = null;
+    let groupsByName = new Map();
+    const GROUP_AUTO_REFRESH_MIN_MS = 10000;
+    const GROUP_AUTO_REFRESH_MAX_MS = 15000;
+    let groupsAutoRefreshTimer = null;
+    let isGroupRefreshInFlight = false;
+    let isGroupsAutoRefreshEnabled = false;
+    let hasGroupsAutoRefreshListeners = false;
+    let lastGroupsRefreshAt = null;
     let chatBody;
     let input;
 
     // ===== GLOBAL FUNCTIONS FOR HTML ONCLICK HANDLERS =====
     // These must be defined IMMEDIATELY so they're available when HTML loads
+
+    function formatGroupsRefreshTime(date) {
+      if (!(date instanceof Date)) {
+        return '--';
+      }
+
+      return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function updateGroupsRefreshIndicator({ loading = false, error = false } = {}) {
+      const dot = document.getElementById('groups-refresh-dot');
+      const label = document.getElementById('groups-refresh-label');
+      const time = document.getElementById('groups-refresh-time');
+
+      if (!dot || !label || !time) {
+        return;
+      }
+
+      dot.classList.remove('loading', 'error');
+      if (error) {
+        dot.classList.add('error');
+      } else if (loading) {
+        dot.classList.add('loading');
+      }
+
+      if (error) {
+        label.textContent = 'Auto-refreshing (retrying)';
+      } else if (loading) {
+        label.textContent = 'Auto-refreshing...';
+      } else {
+        label.textContent = 'Auto-refreshing';
+      }
+
+      time.textContent = `Last updated: ${formatGroupsRefreshTime(lastGroupsRefreshAt)}`;
+    }
     
     function refreshGroups() {
       console.log('🔄 refreshGroups function called (GLOBAL DEFINITION)');
@@ -3480,6 +3584,19 @@
         return;
       }
 
+      const selectedGroup = groupsByName.get(selectedGroupName) || null;
+      if (!selectedGroupId && selectedGroup?._id) {
+        selectedGroupId = selectedGroup._id;
+      }
+
+      const existingLiveRoomCode = selectedGroup?.videoCall?.hasLiveCall
+        ? selectedGroup.videoCall.roomCode
+        : null;
+      if (existingLiveRoomCode) {
+        window.openVideoRoomPage(existingLiveRoomCode, true);
+        return;
+      }
+
       if (window.SubscriptionAccess) {
         const access = await window.SubscriptionAccess.ensureFeatureAccess('video_calls', {
           featureName: 'Video calls'
@@ -3492,13 +3609,32 @@
       const fallbackRoomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
       const targetRoomCode = await window.createVideoRoomViaApi({
         title: `${selectedGroupName} Video Room`,
-        groupId: (typeof selectedGroupId !== 'undefined' && selectedGroupId) ? selectedGroupId : null,
+        groupId: selectedGroupId || null,
         fallbackRoomCode
       });
 
       if (!targetRoomCode) {
         alert('Unable to start video call right now. Please try again.');
         return;
+      }
+
+      if (selectedGroup) {
+        selectedGroup.videoCall = {
+          hasLiveCall: true,
+          status: 'waiting',
+          roomCode: targetRoomCode,
+          title: `${selectedGroupName} Video Room`,
+          participantCount: 1,
+          waitingCount: 0,
+          startedAt: null,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      if (typeof loadMatchedGroups === 'function') {
+        setTimeout(() => {
+          loadMatchedGroups();
+        }, 300);
       }
 
       window.openVideoRoomPage(targetRoomCode, true);
@@ -4952,33 +5088,7 @@
     }
 
     async function startVideoCall() {
-      if (!selectedGroupName) {
-        alert('Please select a group first');
-        return;
-      }
-
-      if (window.SubscriptionAccess) {
-        const access = await window.SubscriptionAccess.ensureFeatureAccess('video_calls', {
-          featureName: 'Video calls'
-        });
-        if (!access.allowed) {
-          return;
-        }
-      }
-
-      const fallbackRoomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
-      const targetRoomCode = await window.createVideoRoomViaApi({
-        title: `${selectedGroupName} Video Room`,
-        groupId: (typeof selectedGroupId !== 'undefined' && selectedGroupId) ? selectedGroupId : null,
-        fallbackRoomCode
-      });
-
-      if (!targetRoomCode) {
-        alert('Unable to start video call right now. Please try again.');
-        return;
-      }
-
-      window.openVideoRoomPage(targetRoomCode, true);
+      await window.startVideoCall();
     }
 
     async function openWhiteboard() {
@@ -6980,6 +7090,7 @@
     async function handleGroupSelectionMain(groupName, element) {
       console.log('🎯 handleGroupSelection called:', groupName);
       selectedGroupName = groupName;
+      selectedGroupId = element?.dataset?.groupId || groupsByName.get(groupName)?._id || null;
       
       // Remove selection from all groups and add to current
       document.querySelectorAll(".group-card").forEach(card => {
@@ -7132,7 +7243,90 @@
       }
     }
 
+    function getNextGroupsAutoRefreshDelay() {
+      return Math.floor(Math.random() * (GROUP_AUTO_REFRESH_MAX_MS - GROUP_AUTO_REFRESH_MIN_MS + 1)) + GROUP_AUTO_REFRESH_MIN_MS;
+    }
+
+    function clearGroupsAutoRefreshTimer() {
+      if (groupsAutoRefreshTimer) {
+        clearTimeout(groupsAutoRefreshTimer);
+        groupsAutoRefreshTimer = null;
+      }
+    }
+
+    function scheduleNextGroupsAutoRefresh() {
+      clearGroupsAutoRefreshTimer();
+
+      if (!isGroupsAutoRefreshEnabled) {
+        return;
+      }
+
+      const delayMs = getNextGroupsAutoRefreshDelay();
+      groupsAutoRefreshTimer = setTimeout(async () => {
+        if (!isGroupsAutoRefreshEnabled) {
+          return;
+        }
+
+        if (document.visibilityState !== 'visible') {
+          scheduleNextGroupsAutoRefresh();
+          return;
+        }
+
+        try {
+          await loadMatchedGroups();
+        } catch (error) {
+          console.error('Auto-refresh group load failed:', error);
+        } finally {
+          scheduleNextGroupsAutoRefresh();
+        }
+      }, delayMs);
+    }
+
+    function startGroupsAutoRefresh() {
+      if (!isGroupsAutoRefreshEnabled) {
+        isGroupsAutoRefreshEnabled = true;
+        console.log(`🔁 Groups auto-refresh enabled (${GROUP_AUTO_REFRESH_MIN_MS / 1000}-${GROUP_AUTO_REFRESH_MAX_MS / 1000}s)`);
+      }
+
+      updateGroupsRefreshIndicator();
+      scheduleNextGroupsAutoRefresh();
+    }
+
+    function stopGroupsAutoRefresh() {
+      isGroupsAutoRefreshEnabled = false;
+      clearGroupsAutoRefreshTimer();
+      console.log('⏸️ Groups auto-refresh disabled');
+      updateGroupsRefreshIndicator();
+    }
+
+    function setupGroupsAutoRefreshListeners() {
+      if (hasGroupsAutoRefreshListeners) {
+        return;
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          scheduleNextGroupsAutoRefresh();
+        } else {
+          clearGroupsAutoRefreshTimer();
+        }
+      });
+
+      window.addEventListener('beforeunload', () => {
+        stopGroupsAutoRefresh();
+      });
+
+      hasGroupsAutoRefreshListeners = true;
+    }
+
     async function loadMatchedGroups() {
+      if (isGroupRefreshInFlight) {
+        console.log('⏭️ loadMatchedGroups skipped: request already in progress');
+        return;
+      }
+
+      isGroupRefreshInFlight = true;
+      updateGroupsRefreshIndicator({ loading: true });
       console.log("============================================================");
       console.log("🔄 loadMatchedGroups() CALLED - Starting group fetch...");
       console.log("🌐 Current URL:", window.location.href);
@@ -7194,6 +7388,16 @@
           totalMessages: group.stats?.messages || 0,
           totalFiles: group.stats?.files || 0,
           totalSessions: group.stats?.sessions || 0,
+          videoCall: group.videoCall || {
+            hasLiveCall: false,
+            status: 'none',
+            roomCode: null,
+            title: null,
+            participantCount: 0,
+            waitingCount: 0,
+            startedAt: null,
+            updatedAt: null
+          },
           recentActivity: group.recentActivity || [],
           progress: group.progress || { percentage: 0, milestones: [] },
           userRole: group.userRole || 'member',
@@ -7201,8 +7405,12 @@
           createdAt: new Date(group.createdAt || Date.now())
         }));
 
+        groupsByName = new Map(enhancedGroups.map(group => [group.group_name, group]));
+
         console.log("✅ Enhanced groups prepared:", enhancedGroups);
         displayGroups(enhancedGroups);
+        lastGroupsRefreshAt = new Date();
+        updateGroupsRefreshIndicator();
         
         // Update member status to online for current user
         enhancedGroups.forEach(group => {
@@ -7218,6 +7426,9 @@
         console.error("❌ Error stack:", err.stack);
         console.log("============================================================");
         displayGroups([]);
+        updateGroupsRefreshIndicator({ error: true });
+      } finally {
+        isGroupRefreshInFlight = false;
       }
     }
     
@@ -7354,6 +7565,20 @@
       
       const groupsHTML = groups.map((group, index) => {
         console.log("🎨 Rendering group " + (index + 1) + ":", group.group_name);
+
+        const videoCall = group.videoCall || {};
+        const videoStatus = (videoCall.status || 'none').toLowerCase();
+        const isVideoLive = videoStatus === 'active';
+        const isVideoWaiting = videoStatus === 'waiting';
+        const videoStatusClass = isVideoLive
+          ? 'video-live'
+          : (isVideoWaiting ? 'video-waiting' : 'video-idle');
+        const videoStatusLabel = isVideoLive
+          ? 'Live'
+          : (isVideoWaiting ? 'Waiting' : 'Idle');
+        const videoStatusValue = (isVideoLive || isVideoWaiting)
+          ? `${videoStatusLabel} (${videoCall.participantCount || 0})`
+          : videoStatusLabel;
         
         // Build members HTML from real data
         let membersHTML = '';
@@ -7428,6 +7653,10 @@
             <div class="stat-item">
               <div class="stat-value">${group.totalMessages || 0}</div>
               <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value video-status ${videoStatusClass}">${videoStatusValue}</div>
+              <div class="stat-label">Video Call</div>
             </div>
           </div>
 
@@ -7525,6 +7754,9 @@
       } catch (error) {
         console.error("❌ Error calling loadMatchedGroups:", error);
       }
+
+      setupGroupsAutoRefreshListeners();
+      startGroupsAutoRefresh();
       
       document.getElementById('send-btn').addEventListener('click', sendMessage);
       

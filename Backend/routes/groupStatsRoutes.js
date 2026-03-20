@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Mentor = require('../models/Mentor');
 const File = require('../models/File');
 const Message = require('../models/Message');
+const VideoRoom = require('../models/VideoRoom');
 const authMiddleware = require('../middleware/authMiddleware');
 const combinedAuthMiddleware = require('../middleware/combinedAuthMiddleware');
 const multer = require('multer');
@@ -210,6 +211,35 @@ router.get('/:groupName/stats', combinedAuthMiddleware, async (req, res) => {
         lastActive: m.lastActive,
         messageCount: m.messageCount
       }));
+
+      const liveVideoRoom = await VideoRoom.findOne({
+        group: group._id,
+        status: { $in: ['waiting', 'active'] }
+      })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .select('roomCode title status participants waitingParticipants startedAt updatedAt');
+
+      const videoCall = liveVideoRoom
+        ? {
+            hasLiveCall: true,
+            status: liveVideoRoom.status,
+            roomCode: liveVideoRoom.roomCode,
+            title: liveVideoRoom.title,
+            participantCount: Array.isArray(liveVideoRoom.participants) ? liveVideoRoom.participants.length : 0,
+            waitingCount: Array.isArray(liveVideoRoom.waitingParticipants) ? liveVideoRoom.waitingParticipants.length : 0,
+            startedAt: liveVideoRoom.startedAt || null,
+            updatedAt: liveVideoRoom.updatedAt || null
+          }
+        : {
+            hasLiveCall: false,
+            status: 'none',
+            roomCode: null,
+            title: null,
+            participantCount: 0,
+            waitingCount: 0,
+            startedAt: null,
+            updatedAt: null
+          };
       
       res.json({
         success: true,
@@ -222,7 +252,8 @@ router.get('/:groupName/stats', combinedAuthMiddleware, async (req, res) => {
         },
         members: members,
         recentActivity: recentActivity,
-        progress: group.progress
+        progress: group.progress,
+        videoCall
       });
       
     } else {
@@ -264,7 +295,17 @@ router.get('/:groupName/stats', combinedAuthMiddleware, async (req, res) => {
         },
         members: [],
         recentActivity: recentActivity,
-        progress: { percentage: 0, milestones: [] }
+        progress: { percentage: 0, milestones: [] },
+        videoCall: {
+          hasLiveCall: false,
+          status: 'none',
+          roomCode: null,
+          title: null,
+          participantCount: 0,
+          waitingCount: 0,
+          startedAt: null,
+          updatedAt: null
+        }
       });
     }
     

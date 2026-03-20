@@ -1187,12 +1187,54 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
     const groups = await Group.find({ name: { $in: userGroupNames } });
     console.log("📦 Found groups in database:", groups.length);
 
+    const VideoRoom = require('./models/VideoRoom');
+    const groupIds = groups.map(group => group._id).filter(Boolean);
+    const liveVideoRoomByGroupId = new Map();
+
+    if (groupIds.length > 0) {
+      const liveRooms = await VideoRoom.find({
+        group: { $in: groupIds },
+        status: { $in: ['waiting', 'active'] }
+      })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .select('group roomCode title status participants waitingParticipants startedAt updatedAt');
+
+      liveRooms.forEach(room => {
+        const groupId = room.group ? room.group.toString() : null;
+        if (!groupId || liveVideoRoomByGroupId.has(groupId)) {
+          return;
+        }
+
+        liveVideoRoomByGroupId.set(groupId, {
+          hasLiveCall: true,
+          status: room.status,
+          roomCode: room.roomCode,
+          title: room.title,
+          participantCount: Array.isArray(room.participants) ? room.participants.length : 0,
+          waitingCount: Array.isArray(room.waitingParticipants) ? room.waitingParticipants.length : 0,
+          startedAt: room.startedAt || null,
+          updatedAt: room.updatedAt || null
+        });
+      });
+    }
+
     // Map groups to response format with all details
     const groupsData = groups.map(group => {
       // Find current user in members
       const currentUserMember = group.members.find(m => m.userId?.toString() === req.user._id.toString());
+      const videoCall = liveVideoRoomByGroupId.get(group._id.toString()) || {
+        hasLiveCall: false,
+        status: 'none',
+        roomCode: null,
+        title: null,
+        participantCount: 0,
+        waitingCount: 0,
+        startedAt: null,
+        updatedAt: null
+      };
       
       return {
+        _id: group._id,
         group_name: group.name,
         description: group.description,
         status: group.status,
@@ -1223,6 +1265,7 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
         progress: group.progress,
         userRole: currentUserMember?.role || 'member',
         isAdmin: currentUserMember?.role === 'admin',
+        videoCall,
         createdAt: group.createdAt
       };
     });
@@ -1243,6 +1286,7 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
       await newGroup.addMember(req.user._id, user.fullname, user.email, 'admin');
       
       groupsData.push({
+        _id: newGroup._id,
         group_name: groupName,
         description: `Study group for ${groupName}`,
         status: 'active',
@@ -1261,6 +1305,16 @@ app.get('/api/match-groups', authMiddleware, async (req, res) => {
         progress: { percentage: 0, milestones: [] },
         userRole: 'admin',
         isAdmin: true,
+        videoCall: {
+          hasLiveCall: false,
+          status: 'none',
+          roomCode: null,
+          title: null,
+          participantCount: 0,
+          waitingCount: 0,
+          startedAt: null,
+          updatedAt: null
+        },
         createdAt: new Date()
       });
     }
@@ -2543,6 +2597,11 @@ async function handleJoinVideoRoom(ws, data) {
     const connectionInfo = participantRecord?.connectionInfo
       ? { ...initialConnectionInfo, ...participantRecord.connectionInfo }
       : initialConnectionInfo;
+
+    // Enforce join-time mute consistently, even when an existing participant record has stale audio state.
+    if (room.settings && room.settings.muteOnEntry === true) {
+      connectionInfo.isAudioOn = false;
+    }
     
     // Add to room clients
     if (!videoRoomClients.has(roomCode)) {
@@ -2588,6 +2647,15 @@ async function handleJoinVideoRoom(ws, data) {
         ? (room.waitingParticipants || []).map(getWaitingParticipantSummary)
         : []
     }));
+
+    // Emit a dedicated queue event on host join so host UI/scripts don't depend on message ordering.
+    if (isHost) {
+      ws.send(JSON.stringify({
+        type: 'waiting_room_queue',
+        roomCode,
+        waitingParticipants: (room.waitingParticipants || []).map(getWaitingParticipantSummary)
+      }));
+    }
     
     // Notify other participants
     broadcastToRoom(roomCode, {
