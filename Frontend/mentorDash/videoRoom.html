@@ -26,11 +26,16 @@
         <button class="btn-icon" id="copy-link-btn" title="Copy invite link">
           <i class="fas fa-link"></i>
         </button>
+        <button class="btn-icon" id="open-settings-btn" title="Room settings">
+          <i class="fas fa-sliders"></i>
+        </button>
         <button class="btn-icon btn-danger" id="leave-btn" title="Leave room">
           <i class="fas fa-phone-slash"></i>
         </button>
       </div>
     </header>
+
+    <div class="connection-status-banner" id="connection-status-banner" role="status" aria-live="polite"></div>
 
     <!-- Main Content -->
     <main class="room-main">
@@ -75,6 +80,14 @@
 
         <!-- Participants Panel -->
         <div class="tab-content" id="participants-panel">
+          <div class="waiting-room-panel" id="waiting-room-panel" style="display: none;">
+            <div class="waiting-room-title">
+              <i class="fas fa-user-clock"></i>
+              <span>Waiting Room</span>
+            </div>
+            <div class="waiting-room-list" id="waiting-room-list"></div>
+          </div>
+
           <div class="participants-list" id="participants-list">
             <!-- Participants will be added dynamically -->
           </div>
@@ -103,6 +116,10 @@
         <button class="control-btn" id="toggle-chat" title="Toggle chat">
           <i class="fas fa-comments"></i>
           <span>Chat</span>
+        </button>
+        <button class="control-btn" id="toggle-recording" title="Toggle recording">
+          <i class="fas fa-record-vinyl"></i>
+          <span>Record</span>
         </button>
         <button class="control-btn" id="toggle-participants" title="Show participants">
           <i class="fas fa-users"></i>
@@ -150,6 +167,66 @@
     <div class="loader"></div>
     <p>Connecting...</p>
   </div>
+
+  <div class="modal" id="waiting-approval-modal">
+    <div class="modal-content waiting-approval-content">
+      <h2>Waiting For Host Approval</h2>
+      <p id="waiting-approval-message">Your request to join this room is pending approval.</p>
+      <button class="btn-secondary" id="waiting-leave-btn" type="button">Leave Room</button>
+    </div>
+  </div>
+
+  <div class="modal" id="room-settings-modal">
+    <div class="modal-content room-settings-content">
+      <h2>Room Settings</h2>
+
+      <div class="join-options room-settings-options">
+        <label class="toggle-option">
+          <input type="checkbox" id="setting-allow-chat" checked>
+          <span><i class="fas fa-comments"></i> Allow chat</span>
+        </label>
+        <label class="toggle-option">
+          <input type="checkbox" id="setting-allow-screen-share" checked>
+          <span><i class="fas fa-desktop"></i> Allow screen sharing</span>
+        </label>
+        <label class="toggle-option">
+          <input type="checkbox" id="setting-allow-hand-raise" checked>
+          <span><i class="fas fa-hand"></i> Allow raise hand</span>
+        </label>
+        <label class="toggle-option">
+          <input type="checkbox" id="setting-require-approval">
+          <span><i class="fas fa-user-check"></i> Require host approval to join</span>
+        </label>
+        <label class="toggle-option">
+          <input type="checkbox" id="setting-allow-recording">
+          <span><i class="fas fa-record-vinyl"></i> Allow recording</span>
+        </label>
+      </div>
+
+      <div class="permission-mode-section">
+        <h3>Member Permissions</h3>
+        <label class="permission-mode-option">
+          <input type="radio" name="member-permission-mode" value="all" checked>
+          <span>Allow all members</span>
+        </label>
+        <label class="permission-mode-option">
+          <input type="radio" name="member-permission-mode" value="selected">
+          <span>Allow selected members only</span>
+        </label>
+
+        <div class="member-permissions-wrap" id="settings-member-permissions-wrap" style="display: none;">
+          <div class="member-permissions-list" id="settings-member-permissions-list"></div>
+        </div>
+      </div>
+
+      <div class="room-settings-actions">
+        <button class="btn-secondary" id="close-room-settings-btn" type="button">Cancel</button>
+        <button class="btn-primary" id="save-room-settings-btn" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="connection-status-toast" id="connection-status-toast" role="status" aria-live="polite"></div>
 
   <script src="videoRoom.js"></script>
 </body>

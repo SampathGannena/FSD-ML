@@ -407,6 +407,7 @@
       flex: 1;
       display: flex;
       overflow: hidden;
+      position: relative;
     }
 
     .line-numbers {
@@ -436,6 +437,59 @@
       outline: none;
       white-space: pre;
       overflow: auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .remote-caret-layer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 50px;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .remote-caret {
+      position: absolute;
+      transform: translate(0, 0);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .remote-caret.visible {
+      opacity: 1;
+    }
+
+    .remote-caret-line {
+      width: 2px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--caret-color, #00d4ff);
+      box-shadow: 0 0 10px var(--caret-color, #00d4ff);
+      animation: caretBlink 1.1s ease-in-out infinite;
+    }
+
+    .remote-caret-label {
+      position: absolute;
+      top: -18px;
+      left: 0;
+      transform: translateX(-2px);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--caret-color, #00d4ff);
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes caretBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
     }
 
     .code-textarea::placeholder {
@@ -1052,6 +1106,7 @@
           placeholder="// Start coding here...
 // Your changes will be synced with your group members in real-time."
           spellcheck="false"></textarea>
+        <div class="remote-caret-layer" id="remoteCaretLayer" aria-hidden="true"></div>
       </div>
     </main>
 
@@ -1165,6 +1220,12 @@ Hello World"></textarea>
     let wsConnection = null;
     let currentUser = null;
     let selectedGroupName = '';
+    const localFileVersions = new Map();
+    let isApplyingRemoteUpdate = false;
+    let remoteCursorMetrics = null;
+    const collaboratorColors = new Map();
+    const remoteCursorPositions = new Map();
+    const remoteCaretElements = new Map();
 
     // ============ File State ============
     let currentFile = 'main.js';
@@ -1187,6 +1248,43 @@ Hello World"></textarea>
     let isLiveShareEnabled = true;
     let wordWrapEnabled = false;
 
+    function normalizeFileName(fileName) {
+      if (typeof fileName !== 'string') {
+        return 'main.js';
+      }
+
+      const normalized = fileName.trim();
+      return normalized || 'main.js';
+    }
+
+    function getFileVersion(fileName) {
+      const normalized = normalizeFileName(fileName);
+      const value = localFileVersions.get(normalized);
+      return Number.isInteger(value) ? value : 0;
+    }
+
+    function setFileVersion(fileName, version) {
+      const normalized = normalizeFileName(fileName);
+      if (!Number.isInteger(version)) {
+        return;
+      }
+      localFileVersions.set(normalized, version);
+    }
+
+    function syncFileVersions(fileVersions) {
+      localFileVersions.clear();
+
+      if (!fileVersions || typeof fileVersions !== 'object') {
+        return;
+      }
+
+      Object.entries(fileVersions).forEach(([fileName, version]) => {
+        if (Number.isInteger(version)) {
+          localFileVersions.set(normalizeFileName(fileName), version);
+        }
+      });
+    }
+
     // ============ Initialization ============
     document.addEventListener('DOMContentLoaded', async () => {
       // Get all params from URL
@@ -1204,12 +1302,19 @@ Hello World"></textarea>
       // Get user info from URL params (passed from groups.html) or fallback to localStorage
       const userName = urlParams.get('userName') || localStorage.getItem('userName') || 'Anonymous';
       const userId = urlParams.get('userId') || localStorage.getItem('userId') || 'user_' + Date.now();
-      const token = urlParams.get('token') || localStorage.getItem('token') || '';
+      const token = urlParams.get('token') || (window.SubscriptionAccess ? window.SubscriptionAccess.getAuthToken() : '') || localStorage.getItem('token') || '';
+      const colorKey = `codeEditor.color.${userId}`;
+      const storedColor = localStorage.getItem(colorKey);
+      const userColor = storedColor || getRandomColor();
+      if (!storedColor) {
+        localStorage.setItem(colorKey, userColor);
+      }
       
       currentUser = {
         id: userId,
         name: userName,
-        token: token
+        token: token,
+        color: userColor
       };
 
       if (!token) {
@@ -1253,15 +1358,17 @@ Hello World"></textarea>
 
       // Event listeners
       textarea.addEventListener('input', () => {
+        const previousCode = files[currentFile] ? files[currentFile].content : textarea.value;
         updateLineNumbers();
         saveCurrentFileContent();
-        if (isLiveShareEnabled) {
-          broadcastCodeChange();
+        if (isLiveShareEnabled && !isApplyingRemoteUpdate) {
+          broadcastCodeChange(previousCode, textarea.value);
         }
       });
 
       textarea.addEventListener('scroll', () => {
         lineNumbers.scrollTop = textarea.scrollTop;
+        renderAllRemoteCarets();
       });
 
       textarea.addEventListener('keydown', handleKeydown);
@@ -1277,8 +1384,10 @@ Hello World"></textarea>
       addCollaborator({
         id: currentUser.id,
         name: currentUser.name + ' (You)',
-        color: getRandomColor()
+        color: currentUser.color
       });
+
+      window.addEventListener('resize', renderAllRemoteCarets);
     }
 
     // ============ Line Numbers ============
@@ -1303,13 +1412,19 @@ Hello World"></textarea>
       const col = lines[lines.length - 1].length + 1;
       
       document.getElementById('cursorPosition').textContent = `Ln ${line}, Col ${col}`;
+      const selection = {
+        start: textarea.selectionStart,
+        end: textarea.selectionEnd
+      };
       
       // Broadcast cursor position
       if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
         wsConnection.send(JSON.stringify({
           type: 'cursor_update',
           groupName: selectedGroupName,
-          cursorPosition: { line, column: col }
+          filename: currentFile,
+          cursorPosition: { line, column: col },
+          selection
         }));
       }
     }
@@ -1321,18 +1436,23 @@ Hello World"></textarea>
       // Tab key - insert spaces
       if (e.key === 'Tab') {
         e.preventDefault();
+        const previousCode = textarea.value;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
         textarea.selectionStart = textarea.selectionEnd = start + 2;
         updateLineNumbers();
         saveCurrentFileContent();
+        if (isLiveShareEnabled && !isApplyingRemoteUpdate) {
+          broadcastCodeChange(previousCode, textarea.value);
+        }
       }
       
       // Auto-closing brackets
       const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
       if (pairs[e.key]) {
         e.preventDefault();
+        const previousCode = textarea.value;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const selectedText = textarea.value.substring(start, end);
@@ -1340,10 +1460,48 @@ Hello World"></textarea>
         textarea.selectionStart = textarea.selectionEnd = start + 1;
         updateLineNumbers();
         saveCurrentFileContent();
+        if (isLiveShareEnabled && !isApplyingRemoteUpdate) {
+          broadcastCodeChange(previousCode, textarea.value);
+        }
       }
     }
 
     // ============ File Operations ============
+    function createFileListItem(filename, language, isActive = false) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const fileItem = document.createElement('div');
+      fileItem.className = `file-item${isActive ? ' active' : ''}`;
+      fileItem.dataset.filename = filename;
+      fileItem.dataset.lang = language;
+      fileItem.innerHTML = `
+        <i class="fas fa-file-code file-icon ${ext}"></i>
+        <span>${filename}</span>
+      `;
+      fileItem.addEventListener('click', () => selectFile(filename));
+      return fileItem;
+    }
+
+    function ensureFileEntry(filename, language = 'javascript') {
+      const normalizedFile = normalizeFileName(filename);
+      if (!files[normalizedFile]) {
+        files[normalizedFile] = {
+          content: '',
+          language: language || 'javascript'
+        };
+      }
+
+      if (!files[normalizedFile].language) {
+        files[normalizedFile].language = language || 'javascript';
+      }
+
+      const fileList = document.getElementById('fileList');
+      if (fileList && !fileList.querySelector(`[data-filename="${normalizedFile}"]`)) {
+        fileList.appendChild(createFileListItem(normalizedFile, files[normalizedFile].language, false));
+      }
+
+      return normalizedFile;
+    }
+
     function saveCurrentFileContent() {
       const textarea = document.getElementById('codeTextarea');
       if (files[currentFile]) {
@@ -1352,28 +1510,31 @@ Hello World"></textarea>
     }
 
     function selectFile(filename) {
-      if (!files[filename]) return;
+      const normalizedFile = ensureFileEntry(filename);
+      if (!files[normalizedFile]) return;
       
       saveCurrentFileContent();
-      currentFile = filename;
-      currentLanguage = files[filename].language;
+      currentFile = normalizedFile;
+      currentLanguage = files[normalizedFile].language;
       
       // Update file list UI
       document.querySelectorAll('.file-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.filename === filename);
+        item.classList.toggle('active', item.dataset.filename === normalizedFile);
       });
       
       // Load file content
-      document.getElementById('codeTextarea').value = files[filename].content;
+      document.getElementById('codeTextarea').value = files[normalizedFile].content;
       updateLineNumbers();
+      renderAllRemoteCarets();
       
       // Update footer
-      document.getElementById('currentFileName').textContent = filename;
+      document.getElementById('currentFileName').textContent = normalizedFile;
       document.getElementById('currentLanguage').textContent = getLanguageDisplayName(currentLanguage);
       document.getElementById('languageSelect').value = currentLanguage;
       
       // Add/update tab
-      addEditorTab(filename);
+      addEditorTab(normalizedFile);
+      updateCursorPosition();
     }
 
     function addEditorTab(filename) {
@@ -1425,9 +1586,16 @@ Hello World"></textarea>
     }
 
     function confirmNewFile() {
-      const filename = document.getElementById('newFileName').value.trim();
+      const filename = normalizeFileName(document.getElementById('newFileName').value);
       if (!filename) {
         showNotification('Please enter a filename', 'error');
+        return;
+      }
+
+      if (files[filename]) {
+        showNotification(`${filename} already exists`, 'info');
+        selectFile(filename);
+        closeNewFileModal();
         return;
       }
       
@@ -1442,23 +1610,27 @@ Hello World"></textarea>
         content: `// ${filename}\n`,
         language: language
       };
+
+      setFileVersion(filename, 0);
       
-      // Add to file list UI
       const fileList = document.getElementById('fileList');
-      const fileItem = document.createElement('div');
-      fileItem.className = 'file-item';
-      fileItem.dataset.filename = filename;
-      fileItem.dataset.lang = language;
-      fileItem.innerHTML = `
-        <i class="fas fa-file-code file-icon ${ext}"></i>
-        <span>${filename}</span>
-      `;
-      fileItem.addEventListener('click', () => selectFile(filename));
-      fileList.appendChild(fileItem);
+      fileList.appendChild(createFileListItem(filename, language, false));
       
       selectFile(filename);
       closeNewFileModal();
       showNotification(`Created ${filename}`, 'success');
+
+      if (isLiveShareEnabled && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'code_update',
+          groupName: selectedGroupName,
+          filename,
+          language,
+          baseVersion: getFileVersion(filename),
+          code: files[filename].content
+        }));
+        setFileVersion(filename, getFileVersion(filename) + 1);
+      }
     }
 
     // ============ Language ============
@@ -1476,6 +1648,15 @@ Hello World"></textarea>
         files[currentFile].language = lang;
       }
       document.getElementById('currentLanguage').textContent = getLanguageDisplayName(lang);
+
+      if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+        wsConnection.send(JSON.stringify({
+          type: 'code_language_change',
+          groupName: selectedGroupName,
+          filename: currentFile,
+          language: lang
+        }));
+      }
     }
 
     // ============ Editor Options ============
@@ -1581,17 +1762,7 @@ Hello World"></textarea>
       
       Object.keys(files).forEach((filename, index) => {
         const file = files[filename];
-        const ext = filename.split('.').pop();
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item' + (index === 0 ? ' active' : '');
-        fileItem.dataset.filename = filename;
-        fileItem.dataset.lang = file.language;
-        fileItem.innerHTML = `
-          <i class="fas fa-file-code file-icon ${ext}"></i>
-          <span>${filename}</span>
-        `;
-        fileItem.addEventListener('click', () => selectFile(filename));
-        fileList.appendChild(fileItem);
+        fileList.appendChild(createFileListItem(filename, file.language, index === 0));
       });
     }
 
@@ -1662,19 +1833,53 @@ Hello World"></textarea>
           outputContent.innerHTML = `<pre>Error: ${escapeHtml(e.message)}</pre>`;
         }
       } else if (currentLanguage === 'css') {
-        // Show CSS preview
-        outputContent.innerHTML = `
-          <div style="color: #888; text-align: center; padding: 20px;">
-            <i class="fas fa-palette" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
-            CSS code saved. Apply it to your HTML file to see the styles.
-          </div>
-        `;
+        // Render CSS against a sample HTML scaffold in an iframe.
+        try {
+          const cssPreview = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>${code}</style>
+</head>
+<body>
+  <main class="preview-root">
+    <h1>CSS Preview</h1>
+    <p>This is a live sandbox for your stylesheet.</p>
+    <button>Primary Action</button>
+    <div class="card">
+      <h2>Card Title</h2>
+      <p>Edit the CSS to style this sample content.</p>
+    </div>
+  </main>
+</body>
+</html>`;
+
+          outputContent.innerHTML = `
+            <iframe
+              srcdoc="${escapeHtml(cssPreview)}"
+              style="width: 100%; height: 100%; border: none; background: white; border-radius: 8px;"
+              sandbox="allow-scripts">
+            </iframe>
+          `;
+        } catch (e) {
+          outputContent.classList.add('error');
+          outputContent.innerHTML = `<pre>Error: ${escapeHtml(e.message)}</pre>`;
+        }
+      } else if (currentLanguage === 'json') {
+        try {
+          const parsed = JSON.parse(code);
+          const formatted = JSON.stringify(parsed, null, 2);
+          outputContent.classList.add('success');
+          outputContent.innerHTML = `<pre>${escapeHtml(formatted)}</pre>`;
+        } catch (e) {
+          outputContent.classList.add('error');
+          outputContent.innerHTML = `<pre>Invalid JSON: ${escapeHtml(e.message)}</pre>`;
+        }
       } else if (currentLanguage === 'python') {
-        // Execute Python on backend
         const input = document.getElementById('programInput').value;
         executePythonCode(code, input);
       } else {
-        // Other languages - try backend
+        // Java/C++/SQL and other server-backed languages.
         const input = document.getElementById('programInput').value;
         executeOnServer(code, currentLanguage, input);
       }
@@ -1864,6 +2069,176 @@ Hello World"></textarea>
       });
     }
 
+    function computeTextOperation(previousCode, nextCode) {
+      if (typeof previousCode !== 'string' || typeof nextCode !== 'string' || previousCode === nextCode) {
+        return null;
+      }
+
+      let start = 0;
+      while (
+        start < previousCode.length &&
+        start < nextCode.length &&
+        previousCode[start] === nextCode[start]
+      ) {
+        start += 1;
+      }
+
+      let previousEnd = previousCode.length - 1;
+      let nextEnd = nextCode.length - 1;
+
+      while (
+        previousEnd >= start &&
+        nextEnd >= start &&
+        previousCode[previousEnd] === nextCode[nextEnd]
+      ) {
+        previousEnd -= 1;
+        nextEnd -= 1;
+      }
+
+      const deleteText = previousCode.slice(start, previousEnd + 1);
+      const insertText = nextCode.slice(start, nextEnd + 1);
+
+      return {
+        index: start,
+        deleteCount: deleteText.length,
+        deleteText,
+        insertText
+      };
+    }
+
+    function applyTextOperation(currentCode, operation) {
+      if (!operation || typeof currentCode !== 'string') {
+        return currentCode;
+      }
+
+      const index = Number(operation.index);
+      const deleteCount = Number(operation.deleteCount || 0);
+      const insertText = typeof operation.insertText === 'string' ? operation.insertText : '';
+      const deleteText = typeof operation.deleteText === 'string' ? operation.deleteText : null;
+
+      if (!Number.isInteger(index) || index < 0 || index > currentCode.length) {
+        throw new Error('Invalid operation index');
+      }
+
+      if (!Number.isInteger(deleteCount) || deleteCount < 0 || index + deleteCount > currentCode.length) {
+        throw new Error('Invalid operation range');
+      }
+
+      if (deleteText !== null) {
+        const existing = currentCode.slice(index, index + deleteCount);
+        if (existing !== deleteText) {
+          throw new Error('Delete text mismatch');
+        }
+      }
+
+      return currentCode.slice(0, index) + insertText + currentCode.slice(index + deleteCount);
+    }
+
+    function getEditorMetrics() {
+      if (remoteCursorMetrics) {
+        return remoteCursorMetrics;
+      }
+
+      const textarea = document.getElementById('codeTextarea');
+      if (!textarea) {
+        return null;
+      }
+
+      const computed = window.getComputedStyle(textarea);
+      const fontSize = parseFloat(computed.fontSize || '14') || 14;
+      let lineHeight = parseFloat(computed.lineHeight);
+      if (!Number.isFinite(lineHeight)) {
+        lineHeight = fontSize * 1.6;
+      }
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      context.font = `${computed.fontSize} ${computed.fontFamily}`;
+      const charWidth = context.measureText('M').width || (fontSize * 0.62);
+
+      remoteCursorMetrics = {
+        charWidth,
+        lineHeight,
+        paddingLeft: parseFloat(computed.paddingLeft || '15') || 15,
+        paddingTop: parseFloat(computed.paddingTop || '15') || 15
+      };
+
+      return remoteCursorMetrics;
+    }
+
+    function renderRemoteCaret(userId) {
+      const textarea = document.getElementById('codeTextarea');
+      const caretLayer = document.getElementById('remoteCaretLayer');
+      const state = remoteCursorPositions.get(userId);
+
+      if (!textarea || !caretLayer || !state) {
+        return;
+      }
+
+      const stateFile = normalizeFileName(state.fileName || currentFile);
+      if (stateFile !== normalizeFileName(currentFile)) {
+        const existing = remoteCaretElements.get(userId);
+        if (existing) {
+          existing.classList.remove('visible');
+        }
+        return;
+      }
+
+      const metrics = getEditorMetrics();
+      if (!metrics) {
+        return;
+      }
+
+      let caret = remoteCaretElements.get(userId);
+      if (!caret) {
+        caret = document.createElement('div');
+        caret.className = 'remote-caret';
+        caret.dataset.userId = userId;
+        caret.innerHTML = '<span class="remote-caret-label"></span><span class="remote-caret-line"></span>';
+        caretLayer.appendChild(caret);
+        remoteCaretElements.set(userId, caret);
+      }
+
+      const line = Math.max(1, Number(state.position?.line || 1));
+      const column = Math.max(1, Number(state.position?.column || 1));
+      const color = state.color || collaboratorColors.get(userId) || '#00d4ff';
+
+      const x = metrics.paddingLeft + ((column - 1) * metrics.charWidth) - textarea.scrollLeft;
+      const y = metrics.paddingTop + ((line - 1) * metrics.lineHeight) - textarea.scrollTop;
+
+      const outOfView =
+        x < -20 ||
+        y < -30 ||
+        x > textarea.clientWidth + 20 ||
+        y > textarea.clientHeight + 30;
+
+      const label = caret.querySelector('.remote-caret-label');
+      if (label) {
+        label.textContent = state.name || 'Collaborator';
+      }
+
+      caret.style.setProperty('--caret-color', color);
+      caret.style.transform = `translate(${x}px, ${y}px)`;
+      caret.classList.toggle('visible', !outOfView);
+    }
+
+    function renderAllRemoteCarets() {
+      remoteCursorMetrics = null;
+      remoteCursorPositions.forEach((_, userId) => {
+        renderRemoteCaret(userId);
+      });
+    }
+
+    function clearRemoteCaret(userId) {
+      const caret = remoteCaretElements.get(userId);
+      if (caret && caret.parentElement) {
+        caret.remove();
+      }
+      remoteCaretElements.delete(userId);
+      remoteCursorPositions.delete(userId);
+      collaboratorColors.delete(userId);
+    }
+
     // ============ WebSocket ============
     let wsReconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -1993,7 +2368,9 @@ Hello World"></textarea>
             groupName: selectedGroupName,
             userId: currentUser.id,
             userName: currentUser.name,
-            token: currentUser.token
+            token: currentUser.token,
+            userColor: currentUser.color,
+            currentFile: currentFile
           }));
           
           showNotification('Connected to collaboration server', 'success');
@@ -2044,6 +2421,32 @@ Hello World"></textarea>
           }
           break;
         case 'code_session_joined':
+          syncFileVersions(data.fileVersions);
+
+          Array.from(remoteCursorPositions.keys()).forEach(clearRemoteCaret);
+          document.querySelectorAll('.collaborator-item').forEach((item) => {
+            if (item.dataset.userId !== currentUser.id) {
+              item.remove();
+            }
+          });
+          updateCollaboratorCount();
+
+          if (data.files && typeof data.files === 'object') {
+            files = data.files;
+            rebuildFileList();
+          }
+
+          if (Number.isInteger(data.version)) {
+            const versionFile = normalizeFileName(data.activeFile || currentFile || 'main.js');
+            if (!localFileVersions.has(versionFile)) {
+              setFileVersion(versionFile, data.version);
+            }
+          }
+
+          const joinFile = normalizeFileName(data.activeFile || currentFile || Object.keys(files)[0] || 'main.js');
+          ensureFileEntry(joinFile, data.language || 'javascript');
+          currentFile = joinFile;
+
           // Show appropriate notification
           if (data.isNewSession) {
             showNotification('New code session created!', 'success');
@@ -2051,18 +2454,18 @@ Hello World"></textarea>
             showNotification(`Joined existing session with ${data.collaborators.length} collaborator(s)`, 'success');
           }
           
-          // Sync code from session
-          if (data.code) {
-            document.getElementById('codeTextarea').value = data.code;
-            updateLineNumbers();
+          // Fallback for older payloads that provide a single code buffer.
+          if (!data.files && typeof data.code === 'string') {
+            files[currentFile].content = data.code;
           }
+
+          selectFile(currentFile);
           
           // Update language if session has one set
           if (data.language && data.language !== currentLanguage) {
             currentLanguage = data.language;
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-              btn.classList.toggle('active', btn.dataset.lang === currentLanguage);
-            });
+            document.getElementById('languageSelect').value = currentLanguage;
+            document.getElementById('currentLanguage').textContent = getLanguageDisplayName(currentLanguage);
           }
           
           // Add other collaborators
@@ -2070,6 +2473,9 @@ Hello World"></textarea>
             data.collaborators.forEach(c => {
               if (c.id !== currentUser.id) {
                 addCollaborator(c);
+                if (c.cursor) {
+                  updateRemoteCursor(c.id, c.cursor, c.name, c.color, c.cursor.fileName || c.activeFile || currentFile);
+                }
               }
             });
           }
@@ -2079,33 +2485,139 @@ Hello World"></textarea>
           
         case 'collaborator_joined':
           addCollaborator(data.collaborator);
+          if (data.collaborator?.cursor) {
+            updateRemoteCursor(
+              data.collaborator.id,
+              data.collaborator.cursor,
+              data.collaborator.name,
+              data.collaborator.color,
+              data.collaborator.cursor.fileName || data.collaborator.activeFile || currentFile
+            );
+          }
           showNotification(`${data.collaborator.name} joined`, 'info');
           break;
           
         case 'collaborator_left':
           removeCollaborator(data.collaboratorId);
+          clearRemoteCaret(data.collaboratorId);
           showNotification(`${data.collaboratorName} left`, 'info');
           break;
           
         case 'code_updated':
           if (data.userId !== currentUser.id) {
+            const targetFile = normalizeFileName(data.filename || currentFile);
+            ensureFileEntry(targetFile, data.language || 'javascript');
+
+            const isCurrentFile = targetFile === normalizeFileName(currentFile);
             const textarea = document.getElementById('codeTextarea');
-            const cursorPos = textarea.selectionStart;
-            textarea.value = data.code;
-            textarea.selectionStart = textarea.selectionEnd = cursorPos;
-            updateLineNumbers();
+            const baseCode = files[targetFile]?.content || '';
+            const cursorPos = isCurrentFile ? textarea.selectionStart : 0;
+            let nextCode = baseCode;
+
+            try {
+              if (data.op) {
+                nextCode = applyTextOperation(baseCode, data.op);
+              } else if (typeof data.code === 'string') {
+                nextCode = data.code;
+              }
+            } catch (operationError) {
+              nextCode = typeof data.code === 'string' ? data.code : baseCode;
+            }
+
+            files[targetFile].content = nextCode;
+            if (typeof data.language === 'string' && data.language) {
+              files[targetFile].language = data.language;
+            }
+
+            if (isCurrentFile) {
+              isApplyingRemoteUpdate = true;
+              textarea.value = nextCode;
+              const safeCursorPos = Math.min(cursorPos, nextCode.length);
+              textarea.selectionStart = textarea.selectionEnd = safeCursorPos;
+              isApplyingRemoteUpdate = false;
+
+              if (files[currentFile]) {
+                files[currentFile].content = nextCode;
+              }
+
+              updateLineNumbers();
+            }
+
+            const nextVersion = Number.isInteger(data.version)
+              ? data.version
+              : (getFileVersion(targetFile) + 1);
+            setFileVersion(targetFile, nextVersion);
+
+            if (data.cursorPosition) {
+              updateRemoteCursor(data.userId, data.cursorPosition, data.userName, data.userColor, targetFile);
+            }
             
             const syncStatus = document.getElementById('syncStatus');
-            syncStatus.innerHTML = `<i class="fas fa-sync"></i><span>Updated by ${data.userName}</span>`;
+            const fileLabel = targetFile === normalizeFileName(currentFile) ? '' : ` in ${targetFile}`;
+            syncStatus.innerHTML = `<i class="fas fa-sync"></i><span>Updated by ${data.userName}${fileLabel}</span>`;
             setTimeout(() => {
               syncStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Synced</span>';
             }, 2000);
           }
           break;
+
+        case 'code_update_ack':
+          setFileVersion(data.filename || currentFile, Number.isInteger(data.version) ? data.version : getFileVersion(data.filename || currentFile));
+          break;
+
+        case 'code_sync_required': {
+          const targetFile = normalizeFileName(data.filename || currentFile);
+          ensureFileEntry(targetFile, data.language || 'javascript');
+
+          if (typeof data.code === 'string') {
+            files[targetFile].content = data.code;
+
+            if (targetFile === normalizeFileName(currentFile)) {
+              const textarea = document.getElementById('codeTextarea');
+              isApplyingRemoteUpdate = true;
+              textarea.value = data.code;
+              isApplyingRemoteUpdate = false;
+              if (files[currentFile]) {
+                files[currentFile].content = data.code;
+              }
+              updateLineNumbers();
+            }
+          }
+
+          if (Number.isInteger(data.version)) {
+            setFileVersion(targetFile, data.version);
+          }
+
+          if (typeof data.language === 'string' && data.language) {
+            files[targetFile].language = data.language;
+            if (targetFile === normalizeFileName(currentFile)) {
+              currentLanguage = data.language;
+              document.getElementById('languageSelect').value = currentLanguage;
+              document.getElementById('currentLanguage').textContent = getLanguageDisplayName(currentLanguage);
+            }
+          }
+
+          showNotification(`Editor resynced for ${targetFile}`, 'info');
+          break;
+        }
+
+        case 'language_changed': {
+          const targetFile = normalizeFileName(data.filename || currentFile);
+          ensureFileEntry(targetFile, data.language || 'javascript');
+          if (typeof data.language === 'string' && data.language) {
+            files[targetFile].language = data.language;
+            if (targetFile === normalizeFileName(currentFile)) {
+              currentLanguage = data.language;
+              document.getElementById('languageSelect').value = currentLanguage;
+              document.getElementById('currentLanguage').textContent = getLanguageDisplayName(currentLanguage);
+            }
+          }
+          break;
+        }
           
         case 'cursor_updated':
           if (data.userId !== currentUser.id) {
-            updateRemoteCursor(data.userId, data.cursorPosition);
+            updateRemoteCursor(data.userId, data.cursorPosition, data.userName, data.userColor, data.filename || data.cursorPosition?.fileName || currentFile);
           }
           break;
           
@@ -2117,16 +2629,28 @@ Hello World"></textarea>
       }
     }
 
-    function broadcastCodeChange() {
+    function broadcastCodeChange(previousCode, nextCode) {
       if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) return;
-      
-      const textarea = document.getElementById('codeTextarea');
-      
-      wsConnection.send(JSON.stringify({
+
+      const targetFile = normalizeFileName(currentFile);
+      const baseVersion = getFileVersion(targetFile);
+      const operation = computeTextOperation(previousCode, nextCode);
+      const payload = {
         type: 'code_update',
         groupName: selectedGroupName,
-        code: textarea.value
-      }));
+        filename: targetFile,
+        language: currentLanguage,
+        baseVersion: baseVersion
+      };
+
+      if (operation) {
+        payload.op = operation;
+      } else {
+        payload.code = typeof nextCode === 'string' ? nextCode : document.getElementById('codeTextarea').value;
+      }
+
+      wsConnection.send(JSON.stringify(payload));
+      setFileVersion(targetFile, baseVersion + 1);
       
       const syncStatus = document.getElementById('syncStatus');
       syncStatus.classList.remove('synced');
@@ -2146,6 +2670,7 @@ Hello World"></textarea>
       if (list.querySelector(`[data-user-id="${user.id}"]`)) return;
       
       const color = user.color || getRandomColor();
+      collaboratorColors.set(user.id, color);
       const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
       
       const item = document.createElement('div');
@@ -2176,14 +2701,34 @@ Hello World"></textarea>
       document.getElementById('onlineCount').textContent = `${count} online`;
     }
 
-    function updateRemoteCursor(userId, position) {
+    function updateRemoteCursor(userId, position, userName, userColor, fileName) {
+      if (!userId || !position) {
+        return;
+      }
+
+      const targetFile = normalizeFileName(fileName || position.fileName || currentFile);
+      const color = userColor || collaboratorColors.get(userId) || '#00d4ff';
+      collaboratorColors.set(userId, color);
+      remoteCursorPositions.set(userId, {
+        position,
+        name: userName || (userId === currentUser?.id ? currentUser.name : 'Collaborator'),
+        color,
+        fileName: targetFile
+      });
+
       const item = document.querySelector(`[data-user-id="${userId}"]`);
       if (item) {
         const cursorEl = item.querySelector('.collaborator-cursor');
         if (cursorEl && position) {
-          cursorEl.textContent = `Line ${position.line}, Col ${position.column}`;
+          if (targetFile === normalizeFileName(currentFile)) {
+            cursorEl.textContent = `Line ${position.line}, Col ${position.column}`;
+          } else {
+            cursorEl.textContent = `${targetFile}: Line ${position.line}, Col ${position.column}`;
+          }
         }
       }
+
+      renderRemoteCaret(userId);
     }
 
     // ============ Chat ============

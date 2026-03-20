@@ -3418,6 +3418,60 @@
         }
       }
     };
+
+    window.getVideoRoomAuthToken = function() {
+      return window.SubscriptionAccess
+        ? window.SubscriptionAccess.getAuthToken()
+        : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+    };
+
+    window.openVideoRoomPage = function(roomCode, openInNewTab = false) {
+      const targetUrl = `../mentorDash/videoRoom.html?room=${encodeURIComponent(roomCode)}`;
+      if (openInNewTab) {
+        window.open(targetUrl, '_blank');
+        return;
+      }
+
+      window.location.href = targetUrl;
+    };
+
+    window.createVideoRoomViaApi = async function({ title, groupId, fallbackRoomCode }) {
+      const token = window.getVideoRoomAuthToken();
+      if (!token) {
+        return fallbackRoomCode || null;
+      }
+
+      const payload = {
+        title: title || 'Study Session'
+      };
+
+      if (groupId) {
+        payload.groupId = groupId;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/video-rooms/create`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const roomCode = result?.room?.roomCode;
+          if (roomCode) {
+            return roomCode;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to create video room via API:', error);
+      }
+
+      return fallbackRoomCode || null;
+    };
     
     // Add other missing function stubs that are properly defined
     window.startVideoCall = async function() {
@@ -3435,8 +3489,19 @@
         }
       }
 
-      const roomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
-      window.open(`../mentorDash/videoRoom.html?room=${encodeURIComponent(roomCode)}`, '_blank');
+      const fallbackRoomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
+      const targetRoomCode = await window.createVideoRoomViaApi({
+        title: `${selectedGroupName} Video Room`,
+        groupId: (typeof selectedGroupId !== 'undefined' && selectedGroupId) ? selectedGroupId : null,
+        fallbackRoomCode
+      });
+
+      if (!targetRoomCode) {
+        alert('Unable to start video call right now. Please try again.');
+        return;
+      }
+
+      window.openVideoRoomPage(targetRoomCode, true);
     };
     
     window.openWhiteboard = async function() {
@@ -3727,16 +3792,31 @@
         
         if (response.ok) {
           const serverSession = await response.json();
-          const roomCode = serverSession.roomCode || sessionId;
-          window.location.href = `../mentorDash/videoRoom.html?room=${roomCode}`;
+          let roomCode = serverSession.roomCode;
+
+          if (!roomCode) {
+            roomCode = await window.createVideoRoomViaApi({
+              title: serverSession.title || serverSession.subject || `Session ${sessionId}`,
+              groupId: serverSession.group?._id || serverSession.group || null,
+              fallbackRoomCode: sessionId
+            });
+          }
+
+          window.openVideoRoomPage(roomCode || sessionId, false);
         } else {
-          // If no specific session found, use sessionId as room code
-          window.location.href = `../mentorDash/videoRoom.html?room=${sessionId}`;
+          const roomCode = await window.createVideoRoomViaApi({
+            title: `Session ${sessionId}`,
+            fallbackRoomCode: sessionId
+          });
+          window.openVideoRoomPage(roomCode || sessionId, false);
         }
       } catch (err) {
         console.error('Error joining session:', err);
-        // Fallback - just use sessionId as room code
-        window.location.href = `../mentorDash/videoRoom.html?room=${sessionId}`;
+        const roomCode = await window.createVideoRoomViaApi({
+          title: `Session ${sessionId}`,
+          fallbackRoomCode: sessionId
+        });
+        window.openVideoRoomPage(roomCode || sessionId, false);
       } finally {
         // Reset joining state after a delay (in case redirect doesn't happen)
         setTimeout(() => {
@@ -4886,8 +4966,19 @@
         }
       }
 
-      const roomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
-      window.open(`../mentorDash/videoRoom.html?room=${encodeURIComponent(roomCode)}`, '_blank');
+      const fallbackRoomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
+      const targetRoomCode = await window.createVideoRoomViaApi({
+        title: `${selectedGroupName} Video Room`,
+        groupId: (typeof selectedGroupId !== 'undefined' && selectedGroupId) ? selectedGroupId : null,
+        fallbackRoomCode
+      });
+
+      if (!targetRoomCode) {
+        alert('Unable to start video call right now. Please try again.');
+        return;
+      }
+
+      window.openVideoRoomPage(targetRoomCode, true);
     }
 
     async function openWhiteboard() {
@@ -6335,7 +6426,7 @@
       `;
     }
 
-    function joinSession(sessionId) {
+    async function joinSession(sessionId) {
       console.log('Joining session:', sessionId);
       
       // Redirect to video room with session ID as room code
@@ -6345,8 +6436,12 @@
         return;
       }
       
-      // Open video room in new tab or redirect
-      window.location.href = `../mentorDash/videoRoom.html?room=${sessionId}`;
+      const roomCode = await window.createVideoRoomViaApi({
+        title: `Session ${sessionId}`,
+        fallbackRoomCode: sessionId
+      });
+
+      window.openVideoRoomPage(roomCode || sessionId, false);
     }
 
     function refreshSessionsView() {

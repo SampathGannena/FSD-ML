@@ -9,11 +9,32 @@ const participantSchema = new mongoose.Schema({
     isVideoOn: { type: Boolean, default: true },
     isAudioOn: { type: Boolean, default: true },
     isScreenSharing: { type: Boolean, default: false },
-    isHandRaised: { type: Boolean, default: false }
+    isHandRaised: { type: Boolean, default: false },
+    isAudioForcedOff: { type: Boolean, default: false },
+    isVideoForcedOff: { type: Boolean, default: false }
   },
   userId: { type: mongoose.Schema.Types.ObjectId, refPath: 'participants.userType' },
   userType: { type: String, enum: ['User', 'Mentor'], default: 'User' }
 });
+
+const waitingParticipantSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  userType: { type: String, enum: ['User', 'Mentor'], default: 'User' },
+  name: { type: String, required: true },
+  peerId: { type: String },
+  requestedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+const recordingSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, required: true },
+  uploadedByType: { type: String, enum: ['User', 'Mentor'], default: 'User' },
+  mimeType: { type: String },
+  size: { type: Number },
+  startedAt: { type: Date },
+  endedAt: { type: Date },
+  uploadedAt: { type: Date, default: Date.now }
+}, { _id: false });
 
 const chatMessageSchema = new mongoose.Schema({
   senderId: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -26,6 +47,10 @@ const chatMessageSchema = new mongoose.Schema({
 });
 
 const videoRoomSchema = new mongoose.Schema({
+  roomId: {
+    type: String,
+    trim: true
+  },
   roomCode: {
     type: String,
     required: true,
@@ -65,6 +90,7 @@ const videoRoomSchema = new mongoose.Schema({
     default: 'waiting'
   },
   participants: [participantSchema],
+  waitingParticipants: [waitingParticipantSchema],
   maxParticipants: {
     type: Number,
     default: 50
@@ -75,17 +101,34 @@ const videoRoomSchema = new mongoose.Schema({
     allowRecording: { type: Boolean, default: false },
     muteOnEntry: { type: Boolean, default: false },
     requireApproval: { type: Boolean, default: false },
-    allowHandRaise: { type: Boolean, default: true }
+    allowHandRaise: { type: Boolean, default: true },
+    memberPermissionMode: {
+      type: String,
+      enum: ['all', 'selected'],
+      default: 'all'
+    },
+    permittedMemberIds: {
+      type: [String],
+      default: []
+    }
   },
   chatMessages: [chatMessageSchema],
   isRecording: { type: Boolean, default: false },
   recordingUrl: { type: String },
+  recordings: [recordingSchema],
   startedAt: { type: Date },
   endedAt: { type: Date },
   duration: { type: Number }, // in minutes
   password: { type: String }
 }, {
   timestamps: true
+});
+
+videoRoomSchema.pre('validate', function(next) {
+  if (!this.roomId && this.roomCode) {
+    this.roomId = this.roomCode;
+  }
+  next();
 });
 
 // Generate unique room code

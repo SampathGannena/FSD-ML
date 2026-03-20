@@ -17,6 +17,8 @@ const combinedAuthMiddleware = require('./middleware/combinedAuthMiddleware');
 const { requireFeature } = require('./middleware/subscriptionMiddleware');
 const cors = require('cors');
 const path = require('path');
+const os = require('os');
+const { spawn } = require('child_process');
 const Group = require('./models/Group');
 const WebSocket = require('ws');
 const Message = require('./models/Message');
@@ -1019,7 +1021,12 @@ app.post('/api/messages/:groupName/read', authMiddleware, async (req, res) => {
 app.post('/api/match-groups', authMiddleware, async (req, res) => {
   try {
     const { group_name } = req.body;
+    const normalizedGroupName = typeof group_name === 'string' ? group_name.trim() : '';
     const userId = req.user._id;
+
+    if (!normalizedGroupName) {
+      return res.status(400).json({ error: 'Group name is required' });
+    }
     
     // Get user info
     const user = await User.findById(userId);
@@ -1027,23 +1034,97 @@ app.post('/api/match-groups', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Find or create the group
-    let group = await Group.findOne({ name: group_name });
-    if (!group) {
-      group = await Group.create({ 
-        name: group_name,
-        createdBy: userId,
-        description: `Study group for ${group_name}`,
-        status: 'active'
-      });
+    // Race-safe create-or-get for concurrent first joins.
+    let group;
+    try {
+      group = await Group.findOneAndUpdate(
+        { name: normalizedGroupName },
+        {
+          $setOnInsert: {
+            name: normalizedGroupName,
+            createdBy: userId,
+            description: `Study group for ${normalizedGroupName}`,
+            status: 'active'
+          }
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true
+        }
+      );
+    } catch (groupUpsertErr) {
+      if (groupUpsertErr?.code === 11000) {
+        group = await Group.findOne({ name: normalizedGroupName });
+      } else {
+        throw groupUpsertErr;
+      }
     }
 
-    // Add user as member using the enhanced method
-    const result = await group.addMember(userId, user.fullname, user.email, group.members.length === 0 ? 'admin' : 'member');
+    if (!group) {
+      return res.status(500).json({ error: 'Failed to create or load group' });
+    }
+
+    // Add member atomically to prevent stale-document VersionError during parallel joins.
+    const memberRole = group.createdBy?.toString() === userId.toString() ? 'admin' : 'member';
+    const joinedAt = new Date();
+    const maxMembers = Number(group?.settings?.maxMembers || 50);
+
+    const joinResult = await Group.updateOne(
+      {
+        _id: group._id,
+        'members.userId': { $ne: userId },
+        $expr: { $lt: [{ $size: '$members' }, maxMembers] }
+      },
+      {
+        $push: {
+          members: {
+            userId,
+            name: user.fullname,
+            email: user.email,
+            role: memberRole,
+            status: 'online',
+            joinedAt,
+            lastActive: joinedAt,
+            activity: [{
+              action: 'joined',
+              description: `${user.fullname} joined the group`,
+              timestamp: joinedAt
+            }]
+          },
+          recentActivity: {
+            $each: [{
+              userId,
+              userName: user.fullname,
+              action: 'joined',
+              description: `${user.fullname} joined the group`,
+              timestamp: joinedAt
+            }],
+            $position: 0,
+            $slice: 50
+          }
+        }
+      }
+    );
+
+    let joinedNow = joinResult.modifiedCount > 0;
+    if (!joinedNow) {
+      const latestGroup = await Group.findById(group._id);
+      const isAlreadyMember = latestGroup?.members?.some(m => m.userId?.toString() === userId.toString());
+
+      if (!isAlreadyMember && (latestGroup?.members?.length || 0) >= Number(latestGroup?.settings?.maxMembers || maxMembers)) {
+        return res.status(400).json({ error: 'Group has reached maximum members' });
+      }
+
+      joinedNow = false;
+    }
     
     // Also update user's groups array (for backward compatibility)
-    if (!user.groups.includes(group_name)) {
-      user.groups.push(group_name);
+    if (!Array.isArray(user.groups)) {
+      user.groups = [];
+    }
+    if (!user.groups.includes(normalizedGroupName)) {
+      user.groups.push(normalizedGroupName);
     }
 
     // Badge logic
@@ -1069,12 +1150,14 @@ app.post('/api/match-groups', authMiddleware, async (req, res) => {
     user.badges = badges;
     await user.save();
 
+    const updatedGroup = await Group.findOne({ name: normalizedGroupName });
+
     res.json({ 
-      message: `Successfully joined ${group_name}`,
+      message: joinedNow ? `Successfully joined ${normalizedGroupName}` : `Already joined ${normalizedGroupName}`,
       group: {
-        name: group.name,
-        members: group.members.length,
-        status: group.status
+        name: updatedGroup?.name || normalizedGroupName,
+        members: updatedGroup?.members?.length || 0,
+        status: updatedGroup?.status || 'active'
       }
     });
   } catch (err) {
@@ -1496,18 +1579,23 @@ app.get('/api/code-editor/session-info/:groupName', authMiddleware, requireFeatu
     
     if (hasActiveSession) {
       const session = codeEditorSessions.get(groupName);
+      ensureSessionFileStore(session);
       const collaborators = Array.from(session.collaborators.values()).map(c => ({
         id: c.id,
         name: c.name,
         joinedAt: c.joinedAt
       }));
+      const activeFileName = session.activeFile || Object.keys(session.files)[0] || 'main.js';
+      const activeFileState = session.files[activeFileName] || { language: 'javascript' };
       
       res.json({
         success: true,
         hasActiveSession: true,
         collaboratorCount: collaborators.length,
         collaborators: collaborators,
-        language: session.language
+        language: activeFileState.language,
+        activeFile: activeFileName,
+        files: Object.keys(session.files)
       });
     } else {
       res.json({
@@ -1579,77 +1667,315 @@ app.get('/api/code-editor/load/:groupName', authMiddleware, requireFeature('code
   }
 });
 
-// Execute code (supports Python, Node.js)
+function runProcess(command, args, options = {}) {
+  const {
+    cwd,
+    input = '',
+    timeoutMs = 10000,
+    env = {}
+  } = options;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let stdout = '';
+    let stderr = '';
+
+    let child;
+    try {
+      child = spawn(command, args, {
+        cwd,
+        windowsHide: true,
+        env: {
+          ...process.env,
+          ...env
+        }
+      });
+    } catch (spawnErr) {
+      resolve({
+        ok: false,
+        spawnError: true,
+        exitCode: null,
+        stdout: '',
+        stderr: spawnErr.message,
+        timedOut: false
+      });
+      return;
+    }
+
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    const timer = setTimeout(() => {
+      if (child && !child.killed) {
+        child.kill('SIGKILL');
+      }
+
+      finish({
+        ok: false,
+        spawnError: false,
+        exitCode: null,
+        stdout,
+        stderr: `${stderr}\nExecution timed out after ${timeoutMs}ms`.trim(),
+        timedOut: true
+      });
+    }, timeoutMs);
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      finish({
+        ok: false,
+        spawnError: true,
+        exitCode: null,
+        stdout,
+        stderr: `${stderr}\n${error.message}`.trim(),
+        timedOut: false
+      });
+    });
+
+    child.on('close', (exitCode) => {
+      finish({
+        ok: exitCode === 0,
+        spawnError: false,
+        exitCode,
+        stdout,
+        stderr,
+        timedOut: false
+      });
+    });
+
+    if (typeof input === 'string' && input.length > 0) {
+      child.stdin.write(input);
+    }
+    child.stdin.end();
+  });
+}
+
+async function withTempWorkspace(prefix, workFn) {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), prefix));
+  try {
+    return await workFn(tempDir);
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+function formatExecutionResponse(language, result, emptyOutputFallback = 'Code executed successfully. No output.') {
+  const mergedOutput = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+
+  if (result.spawnError) {
+    return {
+      output: `Runtime for ${language} is not available on this server.\n${mergedOutput || 'Executable not found.'}`,
+      error: true,
+      language,
+      exitCode: result.exitCode
+    };
+  }
+
+  if (!result.ok) {
+    return {
+      output: mergedOutput || 'Execution failed with no output.',
+      error: true,
+      language,
+      exitCode: result.exitCode
+    };
+  }
+
+  return {
+    output: mergedOutput || emptyOutputFallback,
+    error: false,
+    language,
+    exitCode: result.exitCode
+  };
+}
+
+// Execute code for all editor languages.
 app.post('/api/code-editor/execute', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { code, language, input } = req.body;
-    
-    if (language === 'javascript') {
-      // JavaScript can be run on client side
-      return res.json({ 
-        message: 'JavaScript should be executed in the browser for security reasons' 
-      });
+    const normalizedLanguage = String(language || '').toLowerCase();
+    const sourceCode = typeof code === 'string' ? code : '';
+    const stdinInput = typeof input === 'string' ? input : '';
+
+    if (!sourceCode.trim()) {
+      return res.status(400).json({ output: 'No code provided.', error: true, language: normalizedLanguage || 'unknown' });
     }
-    
-    if (language === 'python') {
-      // Execute Python code
-      const { spawn } = require('child_process');
-      const pythonProcess = spawn('python', ['-c', code], {
-        timeout: 10000 // 10 second timeout
+
+    if (normalizedLanguage === 'javascript') {
+      const jsResult = await runProcess('node', ['-e', sourceCode], {
+        input: stdinInput,
+        timeoutMs: 10000
       });
-      
-      // Send input to stdin if provided
-      if (input) {
-        pythonProcess.stdin.write(input);
-        pythonProcess.stdin.end();
-      } else {
-        pythonProcess.stdin.end();
-      }
-      
-      let output = '';
-      let errorOutput = '';
-      
-      pythonProcess.stdout.on('data', (data) => {
-        output += data.toString();
+      return res.json(formatExecutionResponse('javascript', jsResult));
+    }
+
+    if (normalizedLanguage === 'python') {
+      const pythonResult = await runProcess('python', ['-c', sourceCode], {
+        input: stdinInput,
+        timeoutMs: 10000
       });
-      
-      pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-      
-      pythonProcess.on('close', (exitCode) => {
-        if (errorOutput) {
-          return res.json({
-            output: errorOutput,
-            error: true,
-            language: language,
-            exitCode: exitCode
-          });
+      return res.json(formatExecutionResponse('python', pythonResult));
+    }
+
+    if (normalizedLanguage === 'java') {
+      const javaResponse = await withTempWorkspace('code-java-', async (tempDir) => {
+        const publicClassMatch = sourceCode.match(/\bpublic\s+class\s+([A-Za-z_][A-Za-z0-9_]*)/);
+        const classMatch = publicClassMatch || sourceCode.match(/\bclass\s+([A-Za-z_][A-Za-z0-9_]*)/);
+        const className = classMatch ? classMatch[1] : 'Main';
+        const javaFile = path.join(tempDir, `${className}.java`);
+
+        await fs.promises.writeFile(javaFile, sourceCode, 'utf8');
+
+        const compileResult = await runProcess('javac', [`${className}.java`], {
+          cwd: tempDir,
+          timeoutMs: 15000
+        });
+
+        if (!compileResult.ok) {
+          return formatExecutionResponse('java', compileResult, 'Java compilation failed.');
         }
-        res.json({
-          output: output || 'Code executed successfully. No output.',
-          error: false,
-          language: language,
-          exitCode: exitCode
+
+        const runResult = await runProcess('java', ['-cp', tempDir, className], {
+          cwd: tempDir,
+          input: stdinInput,
+          timeoutMs: 10000
         });
+
+        return formatExecutionResponse('java', runResult);
       });
-      
-      pythonProcess.on('error', (err) => {
-        res.json({
-          output: `Error: Python not found. Please install Python on your system.\n${err.message}`,
-          error: true,
-          language: language
-        });
-      });
-      
-      return; // Don't send response here, wait for process to complete
+
+      return res.json(javaResponse);
     }
-    
-    // For other languages
-    res.json({
-      output: `Code execution for ${language} is not available yet.\nSupported: JavaScript (browser), Python (server)`,
-      error: false,
-      language: language
+
+    if (normalizedLanguage === 'cpp') {
+      const cppResponse = await withTempWorkspace('code-cpp-', async (tempDir) => {
+        const sourceFile = path.join(tempDir, 'main.cpp');
+        const outputBinary = process.platform === 'win32' ? 'main.exe' : 'main';
+        const outputPath = path.join(tempDir, outputBinary);
+
+        await fs.promises.writeFile(sourceFile, sourceCode, 'utf8');
+
+        const compileResult = await runProcess('g++', ['main.cpp', '-std=c++17', '-O2', '-o', outputBinary], {
+          cwd: tempDir,
+          timeoutMs: 20000
+        });
+
+        if (!compileResult.ok) {
+          if (compileResult.spawnError) {
+            return {
+              output: 'C++ compiler not found. Install g++ (MinGW) or clang++ on the server to enable C++ execution.',
+              error: true,
+              language: 'cpp',
+              exitCode: compileResult.exitCode
+            };
+          }
+          return formatExecutionResponse('cpp', compileResult, 'C++ compilation failed.');
+        }
+
+        const runResult = await runProcess(outputPath, [], {
+          cwd: tempDir,
+          input: stdinInput,
+          timeoutMs: 10000
+        });
+
+        return formatExecutionResponse('cpp', runResult);
+      });
+
+      return res.json(cppResponse);
+    }
+
+    if (normalizedLanguage === 'json') {
+      try {
+        const parsed = JSON.parse(sourceCode);
+        return res.json({
+          output: JSON.stringify(parsed, null, 2),
+          error: false,
+          language: 'json',
+          exitCode: 0
+        });
+      } catch (jsonError) {
+        return res.json({
+          output: `Invalid JSON: ${jsonError.message}`,
+          error: true,
+          language: 'json',
+          exitCode: 1
+        });
+      }
+    }
+
+    if (normalizedLanguage === 'sql') {
+      const sqlRunner = [
+        'import json, os, sqlite3, sys',
+        'setup = os.environ.get("SQL_SETUP", "")',
+        'query = sys.stdin.read()',
+        'conn = sqlite3.connect(":memory:")',
+        'cur = conn.cursor()',
+        'if setup.strip():',
+        '    cur.executescript(setup)',
+        'try:',
+        '    cur.execute(query)',
+        '    if cur.description:',
+        '        columns = [d[0] for d in cur.description]',
+        '        rows = cur.fetchall()',
+        '        print(json.dumps({"columns": columns, "rows": rows}, ensure_ascii=False, indent=2))',
+        '    else:',
+        '        conn.commit()',
+        '        print(json.dumps({"rowsAffected": cur.rowcount}, ensure_ascii=False, indent=2))',
+        'except sqlite3.ProgrammingError as pe:',
+        '    if "one statement" in str(pe).lower():',
+        '        cur.executescript(query)',
+        '        conn.commit()',
+        '        print(json.dumps({"message": "SQL script executed successfully"}, ensure_ascii=False, indent=2))',
+        '    else:',
+        '        raise',
+      ].join('\n');
+
+      const sqlResult = await runProcess('python', ['-c', sqlRunner], {
+        input: sourceCode,
+        timeoutMs: 10000,
+        env: {
+          SQL_SETUP: stdinInput
+        }
+      });
+
+      return res.json(formatExecutionResponse('sql', sqlResult));
+    }
+
+    if (normalizedLanguage === 'html') {
+      return res.json({
+        output: 'HTML is executed in the browser preview panel.',
+        error: false,
+        language: 'html',
+        exitCode: 0
+      });
+    }
+
+    if (normalizedLanguage === 'css') {
+      return res.json({
+        output: 'CSS is executed in the browser preview panel.',
+        error: false,
+        language: 'css',
+        exitCode: 0
+      });
+    }
+
+    return res.json({
+      output: `Unsupported language: ${normalizedLanguage}`,
+      error: true,
+      language: normalizedLanguage,
+      exitCode: 1
     });
   } catch (err) {
     console.error('Error executing code:', err);
@@ -1718,6 +2044,7 @@ const { hasFeature } = require('./config/subscriptionFeatures');
 
 let clients = [];
 let videoRoomClients = new Map(); // Map to store room-specific connections
+let videoRoomWaitingClients = new Map(); // Map to store waiting-room websocket clients by room
 let whiteboardSessions = new Map(); // groupName -> { events: [], collaborators: Map }
 
 async function resolveSocketActor(token) {
@@ -1803,6 +2130,18 @@ wss.on('connection', ws => {
           
         case 'recording_update':
           await handleRecordingUpdate(ws, data);
+          break;
+
+        case 'room_settings_update':
+          await handleRoomSettingsUpdate(ws, data);
+          break;
+
+        case 'waiting_room_decision':
+          await handleWaitingRoomDecision(ws, data);
+          break;
+
+        case 'moderation_action':
+          await handleModerationAction(ws, data);
           break;
           
         case 'raise_hand':
@@ -2047,6 +2386,16 @@ wss.on('connection', ws => {
         }, ws);
       }
     }
+
+    // Remove from waiting room websocket clients
+    for (let [roomCode, waitingClients] of videoRoomWaitingClients.entries()) {
+      const updatedWaitingClients = waitingClients.filter(client => client.ws !== ws);
+      if (updatedWaitingClients.length === 0) {
+        videoRoomWaitingClients.delete(roomCode);
+      } else {
+        videoRoomWaitingClients.set(roomCode, updatedWaitingClients);
+      }
+    }
   });
 
   ws.on('error', (error) => {
@@ -2058,6 +2407,7 @@ wss.on('connection', ws => {
 async function handleVideoRoomAuthentication(ws, data) {
   try {
     const { token, roomCode } = data;
+    const normalizedRoomCode = (roomCode || '').toString().trim().toUpperCase();
 
     const resolved = await resolveSocketActor(token);
     if (!resolved) {
@@ -2085,7 +2435,7 @@ async function handleVideoRoomAuthentication(ws, data) {
     ws.userName = actor.fullname || (actorType === 'mentor' ? 'Mentor' : 'User');
     ws.userType = actorType;
     ws.role = actorType;
-    ws.roomCode = roomCode;
+    ws.roomCode = normalizedRoomCode;
     ws.videoRoomAuthenticated = true;
     
     ws.send(JSON.stringify({
@@ -2105,7 +2455,7 @@ async function handleVideoRoomAuthentication(ws, data) {
 
 async function handleJoinVideoRoom(ws, data) {
   try {
-    const { roomCode } = data;
+    const roomCode = normalizeVideoRoomCode(data.roomCode);
     
     if (!ws.userId || !ws.videoRoomAuthenticated) {
       ws.send(JSON.stringify({
@@ -2114,6 +2464,85 @@ async function handleJoinVideoRoom(ws, data) {
       }));
       return;
     }
+
+    if (!roomCode || (ws.roomCode && ws.roomCode !== roomCode)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid room join request'
+      }));
+      return;
+    }
+
+    // Enforce persisted membership before allowing realtime room access.
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Room not found. Join via API before connecting.'
+      }));
+      return;
+    }
+
+    if (room.status === 'ended') {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'This room has ended'
+      }));
+      return;
+    }
+
+    const hostUserId = room.host ? room.host.toString() : null;
+    const participantRecord = room.participants.find(
+      participant => participant.userId && participant.userId.toString() === ws.userId
+    );
+    const waitingRecord = (room.waitingParticipants || []).find(
+      participant => participant.userId && participant.userId.toString() === ws.userId
+    );
+
+    const isHost = hostUserId === ws.userId;
+    const isMember = isHost || !!participantRecord;
+
+    if (!isMember) {
+      if (room.settings?.requireApproval === true && waitingRecord) {
+        upsertWaitingClient(roomCode, {
+          ws,
+          userId: ws.userId,
+          userType: ws.userType,
+          peerId: data.peerId,
+          displayName: waitingRecord.name || ws.userName
+        });
+
+        ws.send(JSON.stringify({
+          type: 'waiting_room_pending',
+          roomCode,
+          message: 'Waiting for host approval',
+          requestedAt: waitingRecord.requestedAt || new Date()
+        }));
+
+        broadcastWaitingQueueToHosts(roomCode, room);
+        return;
+      }
+
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Access denied. Join this room from the room API first.'
+      }));
+      return;
+    }
+
+    removeWaitingClient(roomCode, ws.userId);
+
+    const displayName = participantRecord?.name || ws.userName;
+    const participantRole = isHost ? 'host' : (participantRecord?.role || 'participant');
+    const initialConnectionInfo = {
+      isVideoOn: true,
+      isAudioOn: !(room.settings && room.settings.muteOnEntry === true),
+      isScreenSharing: false,
+      isHandRaised: false
+    };
+    const connectionInfo = participantRecord?.connectionInfo
+      ? { ...initialConnectionInfo, ...participantRecord.connectionInfo }
+      : initialConnectionInfo;
     
     // Add to room clients
     if (!videoRoomClients.has(roomCode)) {
@@ -2129,42 +2558,35 @@ async function handleJoinVideoRoom(ws, data) {
         ws: ws,
         userId: ws.userId,
         userType: ws.userType,
-        role: ws.role,
+        role: participantRole,
         peerId: data.peerId,
-        connectionInfo: {
-          isVideoOn: true,
-          isAudioOn: true,
-          isScreenSharing: false,
-          isHandRaised: false
-        }
+        displayName,
+        connectionInfo
       });
-      
-      videoRoomClients.set(roomCode, roomClients);
+    } else {
+      existingClient.ws = ws;
+      existingClient.peerId = data.peerId || existingClient.peerId;
+      existingClient.displayName = displayName;
+      existingClient.role = participantRole;
+      existingClient.connectionInfo = {
+        ...existingClient.connectionInfo,
+        ...connectionInfo
+      };
     }
-    
-    // Get room info
-    const room = await VideoRoom.findOne({ roomCode });
-    if (!room) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Room not found'
-      }));
-      return;
-    }
+
+    videoRoomClients.set(roomCode, roomClients);
     
     // Send current participants to new joiner
-    const participants = roomClients.map(client => ({
-      userId: client.userId,
-      peerId: client.peerId,
-      role: client.role,
-      connectionInfo: client.connectionInfo
-    }));
+    const participants = roomClients.map(getParticipantSummary);
     
     ws.send(JSON.stringify({
       type: 'room_joined',
       roomCode: roomCode,
       participants: participants,
-      roomSettings: room.settings
+      roomSettings: room.settings,
+      waitingParticipants: isHost
+        ? (room.waitingParticipants || []).map(getWaitingParticipantSummary)
+        : []
     }));
     
     // Notify other participants
@@ -2173,13 +2595,9 @@ async function handleJoinVideoRoom(ws, data) {
       participant: {
         userId: ws.userId,
         peerId: data.peerId,
-        role: ws.role,
-        connectionInfo: {
-          isVideoOn: true,
-          isAudioOn: true,
-          isScreenSharing: false,
-          isHandRaised: false
-        }
+        displayName,
+        role: participantRole,
+        connectionInfo
       }
     }, ws);
     
@@ -2194,7 +2612,12 @@ async function handleJoinVideoRoom(ws, data) {
 
 async function handleLeaveVideoRoom(ws, data) {
   try {
-    const { roomCode } = data;
+    const roomCode = normalizeVideoRoomCode(data.roomCode || ws.roomCode);
+    if (!roomCode) {
+      return;
+    }
+
+    removeWaitingClient(roomCode, ws.userId);
     
     const roomClients = videoRoomClients.get(roomCode);
     if (roomClients) {
@@ -2229,6 +2652,11 @@ async function handleWebRTCSignal(ws, data) {
     
     const roomClients = videoRoomClients.get(roomCode);
     if (!roomClients) return;
+
+    const sourceClient = roomClients.find(client => client.userId === ws.userId);
+    if (!sourceClient) {
+      return;
+    }
     
     const targetClient = roomClients.find(client => client.userId === targetUserId);
     if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
@@ -2245,13 +2673,205 @@ async function handleWebRTCSignal(ws, data) {
   }
 }
 
+function normalizeVideoRoomCode(value) {
+  return (value || '').toString().trim().toUpperCase();
+}
+
+function getWaitingParticipantSummary(waitingParticipant) {
+  return {
+    userId: waitingParticipant.userId ? waitingParticipant.userId.toString() : null,
+    name: waitingParticipant.name,
+    peerId: waitingParticipant.peerId,
+    requestedAt: waitingParticipant.requestedAt || new Date()
+  };
+}
+
+function upsertWaitingClient(roomCode, waitingClient) {
+  if (!videoRoomWaitingClients.has(roomCode)) {
+    videoRoomWaitingClients.set(roomCode, []);
+  }
+
+  const waitingClients = videoRoomWaitingClients.get(roomCode);
+  const existingIndex = waitingClients.findIndex(client => client.userId === waitingClient.userId);
+
+  if (existingIndex !== -1) {
+    waitingClients[existingIndex] = waitingClient;
+  } else {
+    waitingClients.push(waitingClient);
+  }
+
+  videoRoomWaitingClients.set(roomCode, waitingClients);
+}
+
+function removeWaitingClient(roomCode, userId) {
+  const waitingClients = videoRoomWaitingClients.get(roomCode);
+  if (!waitingClients) {
+    return;
+  }
+
+  const updatedWaitingClients = waitingClients.filter(client => client.userId !== userId);
+  if (updatedWaitingClients.length === 0) {
+    videoRoomWaitingClients.delete(roomCode);
+  } else {
+    videoRoomWaitingClients.set(roomCode, updatedWaitingClients);
+  }
+}
+
+function sendToWaitingUser(roomCode, userId, payload) {
+  const waitingClients = videoRoomWaitingClients.get(roomCode) || [];
+  waitingClients.forEach(client => {
+    if (client.userId === userId && client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(JSON.stringify(payload));
+    }
+  });
+}
+
+function sendToActiveRoomUser(roomCode, userId, payload) {
+  const roomClients = videoRoomClients.get(roomCode) || [];
+  roomClients.forEach(client => {
+    if (client.userId === userId && client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(JSON.stringify(payload));
+    }
+  });
+}
+
+function getParticipantSummary(client) {
+  return {
+    userId: client.userId,
+    peerId: client.peerId,
+    displayName: client.displayName,
+    role: client.role,
+    connectionInfo: client.connectionInfo
+  };
+}
+
+function getHostClients(roomCode, hostUserId) {
+  const roomClients = videoRoomClients.get(roomCode) || [];
+  return roomClients.filter(client => client.userId === hostUserId && client.ws.readyState === WebSocket.OPEN);
+}
+
+function broadcastWaitingQueueToHosts(roomCode, room) {
+  if (!room || !room.host) {
+    return;
+  }
+
+  const hostUserId = room.host.toString();
+  const hostClients = getHostClients(roomCode, hostUserId);
+  if (hostClients.length === 0) {
+    return;
+  }
+
+  const queuePayload = {
+    type: 'waiting_room_queue',
+    roomCode,
+    waitingParticipants: (room.waitingParticipants || []).map(getWaitingParticipantSummary)
+  };
+
+  hostClients.forEach(client => {
+    client.ws.send(JSON.stringify(queuePayload));
+  });
+}
+
+function isVideoRoomHost(room, userId) {
+  if (!room || !room.host || !userId) {
+    return false;
+  }
+
+  return room.host.toString() === userId.toString();
+}
+
+function normalizePermittedMemberIds(room, rawIds) {
+  if (!Array.isArray(rawIds) || !room) {
+    return [];
+  }
+
+  const validParticipantIds = new Set(
+    (room.participants || [])
+      .map(participant => participant.userId && participant.userId.toString())
+      .filter(Boolean)
+  );
+
+  const hostId = room.host ? room.host.toString() : null;
+  const uniqueIds = [];
+
+  for (const rawId of rawIds) {
+    const candidateId = rawId && rawId.toString().trim();
+    if (!candidateId) {
+      continue;
+    }
+
+    if (hostId && candidateId === hostId) {
+      continue;
+    }
+
+    if (!validParticipantIds.has(candidateId)) {
+      continue;
+    }
+
+    if (!uniqueIds.includes(candidateId)) {
+      uniqueIds.push(candidateId);
+    }
+  }
+
+  return uniqueIds;
+}
+
+function hasVideoRoomInteractionPermission(room, userId) {
+  if (!room || !userId) {
+    return false;
+  }
+
+  if (isVideoRoomHost(room, userId)) {
+    return true;
+  }
+
+  const settings = room.settings || {};
+  if (settings.memberPermissionMode !== 'selected') {
+    return true;
+  }
+
+  const permittedMemberIds = Array.isArray(settings.permittedMemberIds)
+    ? settings.permittedMemberIds.map(id => id.toString())
+    : [];
+
+  return permittedMemberIds.includes(userId.toString());
+}
+
 async function handleVideoRoomChat(ws, data) {
   try {
     const { roomCode, message, isPrivate, targetUserId } = data;
     let participantName = ws.userName || 'Participant';
+
+    const roomClients = videoRoomClients.get(roomCode);
+    const senderClient = roomClients?.find(client => client.userId === ws.userId);
+    if (!senderClient) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Join the room before sending messages'
+      }));
+      return;
+    }
+
+    participantName = senderClient.displayName || participantName;
     
     // Save message to database
     const room = await VideoRoom.findOne({ roomCode });
+    if (room && room.settings && room.settings.allowChat === false) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Chat is disabled for this room'
+      }));
+      return;
+    }
+
+    if (room && !hasVideoRoomInteractionPermission(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Host has restricted your room interaction permissions'
+      }));
+      return;
+    }
+
     if (room) {
       const participant = room.participants.find(p => 
         p.userId.toString() === ws.userId.toString()
@@ -2276,7 +2896,6 @@ async function handleVideoRoomChat(ws, data) {
     // Broadcast message
     if (isPrivate && targetUserId) {
       // Send private message to target user only
-      const roomClients = videoRoomClients.get(roomCode);
       if (roomClients) {
         const targetClient = roomClients.find(client => client.userId === targetUserId);
         if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
@@ -2310,6 +2929,38 @@ async function handleVideoRoomChat(ws, data) {
 async function handleParticipantUpdate(ws, data) {
   try {
     const { roomCode, connectionInfo } = data;
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      return;
+    }
+
+    const sanitizedConnectionInfo = { ...(connectionInfo || {}) };
+    delete sanitizedConnectionInfo.isAudioForcedOff;
+    delete sanitizedConnectionInfo.isVideoForcedOff;
+
+    if (room.settings && room.settings.allowScreenShare === false) {
+      sanitizedConnectionInfo.isScreenSharing = false;
+    }
+    if (room.settings && room.settings.allowHandRaise === false) {
+      sanitizedConnectionInfo.isHandRaised = false;
+    }
+
+    const participantRecord = room.participants.find(
+      participant => participant.userId && participant.userId.toString() === ws.userId
+    );
+    if (participantRecord?.connectionInfo?.isAudioForcedOff) {
+      sanitizedConnectionInfo.isAudioOn = false;
+      sanitizedConnectionInfo.isAudioForcedOff = true;
+    }
+    if (participantRecord?.connectionInfo?.isVideoForcedOff) {
+      sanitizedConnectionInfo.isVideoOn = false;
+      sanitizedConnectionInfo.isVideoForcedOff = true;
+    }
+
+    if (!hasVideoRoomInteractionPermission(room, ws.userId)) {
+      sanitizedConnectionInfo.isScreenSharing = false;
+      sanitizedConnectionInfo.isHandRaised = false;
+    }
     
     // Update participant connection info in room clients
     const roomClients = videoRoomClients.get(roomCode);
@@ -2318,16 +2969,13 @@ async function handleParticipantUpdate(ws, data) {
       if (clientIndex !== -1) {
         roomClients[clientIndex].connectionInfo = {
           ...roomClients[clientIndex].connectionInfo,
-          ...connectionInfo
+          ...sanitizedConnectionInfo
         };
         
         videoRoomClients.set(roomCode, roomClients);
         
         // Update database
-        const room = await VideoRoom.findOne({ roomCode });
-        if (room) {
-          await room.updateParticipantConnection(ws.userId, connectionInfo);
-        }
+        await room.updateParticipantConnection(ws.userId, sanitizedConnectionInfo);
         
         // Notify other participants
         broadcastToRoom(roomCode, {
@@ -2346,6 +2994,26 @@ async function handleParticipantUpdate(ws, data) {
 async function handleScreenShare(ws, data) {
   try {
     const { roomCode, isSharing } = data;
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      return;
+    }
+
+    if (room.settings && room.settings.allowScreenShare === false) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Screen sharing is disabled for this room'
+      }));
+      return;
+    }
+
+    if (!hasVideoRoomInteractionPermission(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Host has restricted your room interaction permissions'
+      }));
+      return;
+    }
     
     // Update screen share status
     await handleParticipantUpdate(ws, {
@@ -2371,6 +3039,14 @@ async function handleRecordingUpdate(ws, data) {
     // Update database
     const room = await VideoRoom.findOne({ roomCode });
     if (room) {
+      if (room.settings && room.settings.allowRecording === false) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Recording is disabled for this room'
+        }));
+        return;
+      }
+
       const isHost = room.host && room.host.toString() === ws.userId;
       if (!isHost) {
         ws.send(JSON.stringify({
@@ -2395,9 +3071,441 @@ async function handleRecordingUpdate(ws, data) {
   }
 }
 
+async function handleRoomSettingsUpdate(ws, data) {
+  try {
+    const { roomCode, settings } = data;
+    const normalizedRoomCode = (roomCode || '').toString().trim().toUpperCase();
+    if (!normalizedRoomCode || !settings || typeof settings !== 'object') {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid room settings update payload'
+      }));
+      return;
+    }
+
+    const room = await VideoRoom.findOne({ roomCode: normalizedRoomCode });
+    if (!room) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Room not found'
+      }));
+      return;
+    }
+
+    if (!isVideoRoomHost(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Only host can update room settings'
+      }));
+      return;
+    }
+
+    const previousRequireApproval = room.settings?.requireApproval === true;
+
+    const nextSettings = {
+      ...(room.settings?.toObject ? room.settings.toObject() : room.settings || {})
+    };
+
+    const booleanSettingKeys = [
+      'allowChat',
+      'allowScreenShare',
+      'allowRecording',
+      'muteOnEntry',
+      'requireApproval',
+      'allowHandRaise'
+    ];
+
+    for (const key of booleanSettingKeys) {
+      if (typeof settings[key] === 'boolean') {
+        nextSettings[key] = settings[key];
+      }
+    }
+
+    nextSettings.memberPermissionMode = settings.memberPermissionMode === 'selected' ? 'selected' : 'all';
+    nextSettings.permittedMemberIds = nextSettings.memberPermissionMode === 'selected'
+      ? normalizePermittedMemberIds(room, settings.permittedMemberIds)
+      : [];
+
+    room.settings = nextSettings;
+
+    if (nextSettings.allowRecording === false) {
+      room.isRecording = false;
+    }
+
+    await room.save();
+
+    broadcastToRoom(normalizedRoomCode, {
+      type: 'room_settings_updated',
+      roomSettings: room.settings,
+      updatedBy: ws.userId
+    });
+
+    if (previousRequireApproval && nextSettings.requireApproval === false && (room.waitingParticipants || []).length > 0) {
+      const pendingApprovals = [...room.waitingParticipants];
+      room.waitingParticipants = [];
+
+      pendingApprovals.forEach(waitingParticipant => {
+        const waitingUserId = waitingParticipant.userId && waitingParticipant.userId.toString();
+        if (!waitingUserId) {
+          return;
+        }
+
+        const alreadyParticipant = room.participants.some(
+          participant => participant.userId && participant.userId.toString() === waitingUserId
+        );
+
+        if (!alreadyParticipant && room.participants.length < room.maxParticipants) {
+          room.participants.push({
+            name: waitingParticipant.name,
+            peerId: waitingParticipant.peerId,
+            role: 'participant',
+            userId: waitingParticipant.userId,
+            userType: waitingParticipant.userType || 'User',
+            connectionInfo: {
+              isVideoOn: true,
+              isAudioOn: !(nextSettings.muteOnEntry === true),
+              isScreenSharing: false,
+              isHandRaised: false,
+              isAudioForcedOff: false,
+              isVideoForcedOff: false
+            }
+          });
+        }
+
+        sendToWaitingUser(normalizedRoomCode, waitingUserId, {
+          type: 'waiting_room_approved',
+          roomCode: normalizedRoomCode,
+          message: 'Host approved your request to join the room'
+        });
+        removeWaitingClient(normalizedRoomCode, waitingUserId);
+      });
+
+      await room.save();
+    }
+
+    broadcastWaitingQueueToHosts(normalizedRoomCode, room);
+  } catch (error) {
+    console.error('Error handling room settings update:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to update room settings'
+    }));
+  }
+}
+
+async function handleWaitingRoomDecision(ws, data) {
+  try {
+    const roomCode = normalizeVideoRoomCode(data.roomCode);
+    const targetUserId = (data.targetUserId || '').toString().trim();
+    const decision = (data.decision || '').toString().trim().toLowerCase();
+
+    if (!roomCode || !targetUserId || !['approve', 'reject'].includes(decision)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid waiting room decision payload'
+      }));
+      return;
+    }
+
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Room not found'
+      }));
+      return;
+    }
+
+    if (!isVideoRoomHost(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Only host can approve or reject waiting participants'
+      }));
+      return;
+    }
+
+    const waitingIndex = (room.waitingParticipants || []).findIndex(
+      participant => participant.userId && participant.userId.toString() === targetUserId
+    );
+
+    if (waitingIndex === -1) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Participant is not in the waiting room queue'
+      }));
+      return;
+    }
+
+    const waitingParticipant = room.waitingParticipants[waitingIndex];
+
+    if (decision === 'approve') {
+      const alreadyParticipant = room.participants.some(
+        participant => participant.userId && participant.userId.toString() === targetUserId
+      );
+
+      if (!alreadyParticipant && room.participants.length >= room.maxParticipants) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Room is full. Cannot approve additional participants.'
+        }));
+        return;
+      }
+
+      if (!alreadyParticipant) {
+        room.participants.push({
+          name: waitingParticipant.name,
+          peerId: waitingParticipant.peerId,
+          role: 'participant',
+          userId: waitingParticipant.userId,
+          userType: waitingParticipant.userType || 'User',
+          connectionInfo: {
+            isVideoOn: true,
+            isAudioOn: !(room.settings?.muteOnEntry === true),
+            isScreenSharing: false,
+            isHandRaised: false,
+            isAudioForcedOff: false,
+            isVideoForcedOff: false
+          }
+        });
+      }
+
+      room.waitingParticipants.splice(waitingIndex, 1);
+      await room.save();
+
+      sendToWaitingUser(roomCode, targetUserId, {
+        type: 'waiting_room_approved',
+        roomCode,
+        message: 'Host approved your request to join the room'
+      });
+      removeWaitingClient(roomCode, targetUserId);
+
+      ws.send(JSON.stringify({
+        type: 'waiting_room_decision_ack',
+        roomCode,
+        targetUserId,
+        decision: 'approve'
+      }));
+    }
+
+    if (decision === 'reject') {
+      room.waitingParticipants.splice(waitingIndex, 1);
+      await room.save();
+
+      sendToWaitingUser(roomCode, targetUserId, {
+        type: 'waiting_room_rejected',
+        roomCode,
+        message: 'Host declined your request to join the room'
+      });
+      removeWaitingClient(roomCode, targetUserId);
+
+      ws.send(JSON.stringify({
+        type: 'waiting_room_decision_ack',
+        roomCode,
+        targetUserId,
+        decision: 'reject'
+      }));
+    }
+
+    broadcastWaitingQueueToHosts(roomCode, room);
+  } catch (error) {
+    console.error('Error handling waiting room decision:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to process waiting room decision'
+    }));
+  }
+}
+
+async function handleModerationAction(ws, data) {
+  try {
+    const roomCode = normalizeVideoRoomCode(data.roomCode);
+    const targetUserId = (data.targetUserId || '').toString().trim();
+    const action = (data.action || '').toString().trim().toLowerCase();
+    const supportedActions = ['mute_audio', 'unmute_audio', 'mute_video', 'unmute_video', 'kick'];
+
+    if (!roomCode || !targetUserId || !supportedActions.includes(action)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid moderation action payload'
+      }));
+      return;
+    }
+
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Room not found'
+      }));
+      return;
+    }
+
+    if (!isVideoRoomHost(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Only host can moderate participants'
+      }));
+      return;
+    }
+
+    if (room.host && room.host.toString() === targetUserId) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Host cannot moderate themselves'
+      }));
+      return;
+    }
+
+    const participant = room.participants.find(
+      participantEntry => participantEntry.userId && participantEntry.userId.toString() === targetUserId
+    );
+
+    if (!participant) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Participant not found in room'
+      }));
+      return;
+    }
+
+    const roomClients = videoRoomClients.get(roomCode) || [];
+    const targetClient = roomClients.find(client => client.userId === targetUserId);
+    const targetWs = targetClient?.ws;
+
+    if (action === 'kick') {
+      room.participants = room.participants.filter(
+        participantEntry => !participantEntry.userId || participantEntry.userId.toString() !== targetUserId
+      );
+      await room.save();
+
+      removeWaitingClient(roomCode, targetUserId);
+
+      if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+        targetWs.send(JSON.stringify({
+          type: 'moderation_action',
+          action: 'kick',
+          targetUserId,
+          message: 'Host removed you from the room'
+        }));
+      }
+
+      const updatedClients = roomClients.filter(client => client.userId !== targetUserId);
+      if (updatedClients.length === 0) {
+        videoRoomClients.delete(roomCode);
+      } else {
+        videoRoomClients.set(roomCode, updatedClients);
+      }
+
+      broadcastToRoom(roomCode, {
+        type: 'participant_left',
+        participantId: targetUserId,
+        timestamp: new Date()
+      }, targetWs || null);
+
+      if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+        targetWs.close();
+      }
+
+      ws.send(JSON.stringify({
+        type: 'moderation_action_ack',
+        roomCode,
+        targetUserId,
+        action: 'kick'
+      }));
+
+      return;
+    }
+
+    if (action === 'mute_audio') {
+      participant.connectionInfo.isAudioOn = false;
+      participant.connectionInfo.isAudioForcedOff = true;
+    }
+
+    if (action === 'unmute_audio') {
+      participant.connectionInfo.isAudioOn = true;
+      participant.connectionInfo.isAudioForcedOff = false;
+    }
+
+    if (action === 'mute_video') {
+      participant.connectionInfo.isVideoOn = false;
+      participant.connectionInfo.isVideoForcedOff = true;
+    }
+
+    if (action === 'unmute_video') {
+      participant.connectionInfo.isVideoOn = true;
+      participant.connectionInfo.isVideoForcedOff = false;
+    }
+
+    await room.save();
+
+    const targetConnectionInfo = {
+      isVideoOn: !!participant.connectionInfo.isVideoOn,
+      isAudioOn: !!participant.connectionInfo.isAudioOn,
+      isScreenSharing: !!participant.connectionInfo.isScreenSharing,
+      isHandRaised: !!participant.connectionInfo.isHandRaised,
+      isAudioForcedOff: !!participant.connectionInfo.isAudioForcedOff,
+      isVideoForcedOff: !!participant.connectionInfo.isVideoForcedOff
+    };
+
+    if (targetClient) {
+      targetClient.connectionInfo = {
+        ...targetClient.connectionInfo,
+        ...targetConnectionInfo
+      };
+      videoRoomClients.set(roomCode, roomClients);
+    }
+
+    sendToActiveRoomUser(roomCode, targetUserId, {
+      type: 'moderation_action',
+      action,
+      targetUserId,
+      message: 'Host updated your room moderation state'
+    });
+
+    broadcastToRoom(roomCode, {
+      type: 'participant_updated',
+      participantId: targetUserId,
+      connectionInfo: targetConnectionInfo
+    });
+
+    ws.send(JSON.stringify({
+      type: 'moderation_action_ack',
+      roomCode,
+      targetUserId,
+      action
+    }));
+  } catch (error) {
+    console.error('Error handling moderation action:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      message: 'Failed to process moderation action'
+    }));
+  }
+}
+
 async function handleRaiseHand(ws, data) {
   try {
     const { roomCode, isHandRaised } = data;
+    const room = await VideoRoom.findOne({ roomCode });
+    if (!room) {
+      return;
+    }
+
+    if (room.settings && room.settings.allowHandRaise === false) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Raise hand is disabled for this room'
+      }));
+      return;
+    }
+
+    if (!hasVideoRoomInteractionPermission(room, ws.userId)) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Host has restricted your room interaction permissions'
+      }));
+      return;
+    }
     
     await handleParticipantUpdate(ws, {
       roomCode,
@@ -2633,9 +3741,164 @@ async function handleWhiteboardCursorMove(ws, data) {
 
 // Store for code editor sessions (groupName -> { code, language, collaborators })
 
+function applyTextOperationToCode(currentCode, op = {}) {
+  if (typeof currentCode !== 'string') {
+    throw new Error('Current code must be a string');
+  }
+
+  const index = Number(op.index);
+  const deleteCount = Number(op.deleteCount || 0);
+  const insertText = typeof op.insertText === 'string' ? op.insertText : '';
+  const deleteText = typeof op.deleteText === 'string' ? op.deleteText : null;
+
+  if (!Number.isInteger(index) || index < 0 || index > currentCode.length) {
+    throw new Error('Invalid operation index');
+  }
+
+  if (!Number.isInteger(deleteCount) || deleteCount < 0) {
+    throw new Error('Invalid operation deleteCount');
+  }
+
+  const endIndex = index + deleteCount;
+  if (endIndex > currentCode.length) {
+    throw new Error('Operation delete range is out of bounds');
+  }
+
+  if (deleteText !== null) {
+    const existingText = currentCode.slice(index, endIndex);
+    if (existingText !== deleteText) {
+      throw new Error('Delete text mismatch');
+    }
+  }
+
+  return currentCode.slice(0, index) + insertText + currentCode.slice(endIndex);
+}
+
+function buildDefaultCodeEditorFiles() {
+  return {
+    'main.js': {
+      content: '// Welcome to the Collaborative Code Editor!\n// Start coding with your group members.\n\nfunction hello() {\n    console.log("Hello, Study Group!");\n}\n\nhello();',
+      language: 'javascript',
+      version: 0,
+      history: []
+    },
+    'styles.css': {
+      content: '/* Styles for your project */\n\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n    background: #1e1e1e;\n    color: #fff;\n}',
+      language: 'css',
+      version: 0,
+      history: []
+    },
+    'index.html': {
+      content: '<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <title>My Project</title>\n    <link rel="stylesheet" href="styles.css">\n</head>\n<body>\n    <h1>Hello World!</h1>\n</body>\n</html>',
+      language: 'html',
+      version: 0,
+      history: []
+    }
+  };
+}
+
+function normalizeSessionFiles(rawFiles) {
+  const sourceFiles = rawFiles && typeof rawFiles === 'object' ? rawFiles : buildDefaultCodeEditorFiles();
+  const normalized = {};
+
+  for (const [fileName, fileData] of Object.entries(sourceFiles)) {
+    if (!fileName) {
+      continue;
+    }
+
+    const data = fileData && typeof fileData === 'object' ? fileData : {};
+    normalized[fileName] = {
+      content: typeof data.content === 'string' ? data.content : '',
+      language: typeof data.language === 'string' ? data.language : 'javascript',
+      version: Number.isInteger(data.version) ? data.version : 0,
+      history: Array.isArray(data.history) ? data.history : []
+    };
+  }
+
+  if (Object.keys(normalized).length === 0) {
+    return buildDefaultCodeEditorFiles();
+  }
+
+  return normalized;
+}
+
+function ensureSessionFileStore(session) {
+  if (!session.files || typeof session.files !== 'object') {
+    const fallbackContent = typeof session.code === 'string'
+      ? session.code
+      : '// Start coding here...\nconsole.log("Hello, World!");';
+
+    const fallbackLanguage = typeof session.language === 'string' ? session.language : 'javascript';
+    const fallbackVersion = Number.isInteger(session.version) ? session.version : 0;
+
+    session.files = {
+      'main.js': {
+        content: fallbackContent,
+        language: fallbackLanguage,
+        version: fallbackVersion,
+        history: Array.isArray(session.history) ? session.history : []
+      }
+    };
+  }
+
+  for (const [fileName, fileData] of Object.entries(session.files)) {
+    const normalizedData = fileData && typeof fileData === 'object' ? fileData : {};
+    session.files[fileName] = {
+      content: typeof normalizedData.content === 'string' ? normalizedData.content : '',
+      language: typeof normalizedData.language === 'string' ? normalizedData.language : 'javascript',
+      version: Number.isInteger(normalizedData.version) ? normalizedData.version : 0,
+      history: Array.isArray(normalizedData.history) ? normalizedData.history : []
+    };
+  }
+
+  if (!session.activeFile || !session.files[session.activeFile]) {
+    session.activeFile = Object.keys(session.files)[0] || 'main.js';
+  }
+}
+
+function getSessionFileState(session, fileName, fallbackLanguage = 'javascript') {
+  ensureSessionFileStore(session);
+
+  if (!session.files[fileName]) {
+    session.files[fileName] = {
+      content: '',
+      language: fallbackLanguage,
+      version: 0,
+      history: []
+    };
+  }
+
+  return session.files[fileName];
+}
+
+function getSessionFileVersions(session) {
+  ensureSessionFileStore(session);
+
+  return Object.fromEntries(
+    Object.entries(session.files).map(([fileName, fileData]) => [
+      fileName,
+      Number.isInteger(fileData.version) ? fileData.version : 0
+    ])
+  );
+}
+
+function getSerializableSessionFiles(session) {
+  ensureSessionFileStore(session);
+
+  return Object.fromEntries(
+    Object.entries(session.files).map(([fileName, fileData]) => [
+      fileName,
+      {
+        content: fileData.content,
+        language: fileData.language
+      }
+    ])
+  );
+}
+
 async function handleJoinCodeSession(ws, data) {
   try {
-    const { groupName, token, userAvatar } = data;
+    const { groupName, token, userAvatar, userColor, currentFile } = data;
     
     if (!groupName) {
       ws.send(JSON.stringify({ type: 'error', message: 'Group name is required' }));
@@ -2697,11 +3960,13 @@ async function handleJoinCodeSession(ws, data) {
     
     if (isNewSession) {
       console.log(`[Code Editor] Creating new session for group: ${groupName} by user: ${userName}`);
+      const savedSnippet = codeSnippets.get(groupName);
+      const initialFiles = normalizeSessionFiles(savedSnippet?.files);
+
       codeEditorSessions.set(groupName, {
-        code: '// Start coding here...\nconsole.log("Hello, World!");',
-        language: 'javascript',
+        files: initialFiles,
+        activeFile: currentFile && initialFiles[currentFile] ? currentFile : (Object.keys(initialFiles)[0] || 'main.js'),
         collaborators: new Map(),
-        history: [],
         createdBy: userId,
         createdAt: new Date()
       });
@@ -2710,6 +3975,14 @@ async function handleJoinCodeSession(ws, data) {
     }
     
     const session = codeEditorSessions.get(groupName);
+    ensureSessionFileStore(session);
+
+    if (currentFile && session.files[currentFile]) {
+      session.activeFile = currentFile;
+    }
+
+    const activeFileName = session.activeFile;
+    const activeFileState = getSessionFileState(session, activeFileName);
     
     // Check if user is already in the session (prevent duplicate connections)
     for (const [existingWs, collaborator] of session.collaborators.entries()) {
@@ -2725,20 +3998,27 @@ async function handleJoinCodeSession(ws, data) {
       id: userId,
       name: userName || 'Anonymous',
       avatar: userAvatar || '',
+      color: userColor || '#00d4ff',
       joinedAt: new Date(),
-      cursor: { line: 0, column: 0 }
+      activeFile: activeFileName,
+      cursor: { line: 0, column: 0, fileName: activeFileName }
     });
     
     // Store session info on websocket
     ws.codeSession = groupName;
     ws.codeUserId = userId;
     ws.codeUserName = userName;
+    ws.codeUserColor = userColor || '#00d4ff';
+    ws.codeCurrentFile = activeFileName;
     
     // Prepare collaborators list for response
     const collaboratorsList = Array.from(session.collaborators.values()).map(c => ({
       id: c.id,
       name: c.name,
       avatar: c.avatar,
+      color: c.color,
+      activeFile: c.activeFile,
+      cursor: c.cursor,
       joinedAt: c.joinedAt
     }));
     
@@ -2746,8 +4026,12 @@ async function handleJoinCodeSession(ws, data) {
     ws.send(JSON.stringify({
       type: 'code_session_joined',
       groupName: groupName,
-      code: session.code,
-      language: session.language,
+      files: getSerializableSessionFiles(session),
+      fileVersions: getSessionFileVersions(session),
+      activeFile: activeFileName,
+      code: activeFileState.content,
+      language: activeFileState.language,
+      version: Number.isInteger(activeFileState.version) ? activeFileState.version : 0,
       collaborators: collaboratorsList,
       isNewSession: isNewSession,
       sessionCreatedBy: session.createdBy
@@ -2759,7 +4043,10 @@ async function handleJoinCodeSession(ws, data) {
       collaborator: {
         id: userId,
         name: userName,
-        avatar: userAvatar
+        avatar: userAvatar,
+        color: userColor || '#00d4ff',
+        activeFile: activeFileName,
+        cursor: { line: 0, column: 0, fileName: activeFileName }
       }
     }, ws);
     
@@ -2811,6 +4098,7 @@ async function handleLeaveCodeSession(ws, data) {
     delete ws.codeSession;
     delete ws.codeUserId;
     delete ws.codeUserName;
+    delete ws.codeCurrentFile;
     
   } catch (error) {
     console.error('Error leaving code session:', error);
@@ -2819,38 +4107,116 @@ async function handleLeaveCodeSession(ws, data) {
 
 async function handleCodeUpdate(ws, data) {
   try {
-    const { groupName, code, cursorPosition, changeRange } = data;
+    const { groupName, code, op, baseVersion, cursorPosition, changeRange, filename, language } = data;
     
     if (!groupName || !codeEditorSessions.has(groupName)) {
       return;
     }
     
     const session = codeEditorSessions.get(groupName);
+    ensureSessionFileStore(session);
+
+    const fileName = typeof filename === 'string' && filename.trim() ? filename.trim() : 'main.js';
+    const fileState = getSessionFileState(session, fileName, typeof language === 'string' ? language : 'javascript');
+    const fileVersion = Number.isInteger(fileState.version) ? fileState.version : 0;
     
-    // Update code in session
-    session.code = code;
+    let nextCode = fileState.content;
+    let appliedOp = null;
+
+    if (op && typeof op === 'object') {
+      if (Number.isInteger(baseVersion) && baseVersion !== fileVersion) {
+        ws.send(JSON.stringify({
+          type: 'code_sync_required',
+          reason: 'VERSION_MISMATCH',
+          filename: fileName,
+          code: fileState.content,
+          language: fileState.language,
+          version: fileVersion
+        }));
+        return;
+      }
+
+      try {
+        nextCode = applyTextOperationToCode(fileState.content, op);
+        appliedOp = {
+          index: Number(op.index),
+          deleteCount: Number(op.deleteCount || 0),
+          deleteText: typeof op.deleteText === 'string' ? op.deleteText : '',
+          insertText: typeof op.insertText === 'string' ? op.insertText : ''
+        };
+      } catch (operationError) {
+        ws.send(JSON.stringify({
+          type: 'code_sync_required',
+          reason: 'OPERATION_INVALID',
+          filename: fileName,
+          code: fileState.content,
+          language: fileState.language,
+          version: fileVersion
+        }));
+        return;
+      }
+    } else if (typeof code === 'string') {
+      nextCode = code;
+    } else {
+      return;
+    }
+
+    // Update file in session
+    fileState.content = nextCode;
+    if (typeof language === 'string' && language.trim()) {
+      fileState.language = language.trim();
+    }
+    fileState.version = fileVersion + 1;
+    session.activeFile = fileName;
+    ws.codeCurrentFile = fileName;
+
+    const collaborator = session.collaborators.get(ws);
+    if (collaborator) {
+      collaborator.activeFile = fileName;
+      if (cursorPosition) {
+        collaborator.cursor = {
+          ...cursorPosition,
+          fileName
+        };
+      }
+    }
     
-    // Track history (for undo/redo if needed)
-    session.history.push({
-      code: code,
+    // Track per-file history (for undo/redo if needed)
+    fileState.history.push({
+      code: nextCode,
       userId: ws.codeUserId,
+      version: fileState.version,
+      op: appliedOp,
       timestamp: new Date()
     });
     
     // Keep history limited
-    if (session.history.length > 100) {
-      session.history.shift();
+    if (fileState.history.length > 100) {
+      fileState.history.shift();
     }
     
     // Broadcast to other collaborators
     broadcastToCodeSession(groupName, {
       type: 'code_updated',
-      code: code,
+      filename: fileName,
+      code: nextCode,
+      op: appliedOp,
+      language: fileState.language,
+      version: fileState.version,
       userId: ws.codeUserId,
       userName: ws.codeUserName,
+      userColor: ws.codeUserColor || '#00d4ff',
       cursorPosition: cursorPosition,
       changeRange: changeRange
     }, ws);
+
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'code_update_ack',
+        filename: fileName,
+        version: fileState.version
+      }));
+    }
     
   } catch (error) {
     console.error('Error handling code update:', error);
@@ -2859,24 +4225,37 @@ async function handleCodeUpdate(ws, data) {
 
 async function handleCursorUpdate(ws, data) {
   try {
-    const { groupName, cursorPosition, selection } = data;
+    const { groupName, cursorPosition, selection, filename } = data;
     
     if (!groupName || !codeEditorSessions.has(groupName)) {
       return;
     }
     
     const session = codeEditorSessions.get(groupName);
+    ensureSessionFileStore(session);
     const collaborator = session.collaborators.get(ws);
     
     if (collaborator) {
-      collaborator.cursor = cursorPosition;
+      const fileName = typeof filename === 'string' && filename.trim()
+        ? filename.trim()
+        : (collaborator.activeFile || session.activeFile || 'main.js');
+
+      collaborator.activeFile = fileName;
+      collaborator.cursor = {
+        ...cursorPosition,
+        fileName
+      };
       collaborator.selection = selection;
+      ws.codeCurrentFile = fileName;
+      session.activeFile = fileName;
       
       // Broadcast cursor position to others
       broadcastToCodeSession(groupName, {
         type: 'cursor_updated',
         userId: ws.codeUserId,
         userName: ws.codeUserName,
+        userColor: ws.codeUserColor || '#00d4ff',
+        filename: fileName,
         cursorPosition: cursorPosition,
         selection: selection
       }, ws);
@@ -2889,14 +4268,27 @@ async function handleCursorUpdate(ws, data) {
 
 async function handleLanguageChange(ws, data) {
   try {
-    const { groupName, language } = data;
+    const { groupName, language, filename } = data;
+
+    if (typeof language !== 'string' || !language.trim()) {
+      return;
+    }
     
     if (!groupName || !codeEditorSessions.has(groupName)) {
       return;
     }
     
     const session = codeEditorSessions.get(groupName);
-    session.language = language;
+    ensureSessionFileStore(session);
+
+    const fileName = typeof filename === 'string' && filename.trim()
+      ? filename.trim()
+      : (session.activeFile || 'main.js');
+    const normalizedLanguage = language.trim();
+    const fileState = getSessionFileState(session, fileName, normalizedLanguage);
+
+    fileState.language = normalizedLanguage;
+    session.activeFile = fileName;
     
     // Update code template for new language
     const templates = {
@@ -2914,9 +4306,10 @@ async function handleLanguageChange(ws, data) {
     // Broadcast language change to all
     broadcastToCodeSession(groupName, {
       type: 'language_changed',
-      language: language,
+      filename: fileName,
+      language: normalizedLanguage,
       changedBy: ws.codeUserName,
-      template: templates[language] || '// Start coding...'
+      template: templates[normalizedLanguage] || '// Start coding...'
     });
     
   } catch (error) {
