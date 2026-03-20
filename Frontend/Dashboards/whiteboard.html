@@ -724,7 +724,7 @@
 
     function connectWebSocket() {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      socket = new WebSocket(`${wsProtocol}//${window.location.hostname}:5000`);
+      socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 
       socket.addEventListener('open', function() {
         console.log('Connected to whiteboard');

@@ -729,7 +729,7 @@
       const token = localStorage.getItem('mentorToken');
       
       // Connect without token in URL (server doesn't parse it)
-      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}://${window.location.host}`);
+      ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}://${window.location.host}/ws`);
       
       ws.onopen = () => {
         console.log('WebSocket connected');

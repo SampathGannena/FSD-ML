@@ -2096,7 +2096,30 @@ try {
 // after redirect into this,not awaiting live fetched
 
 try {
-  const wss = new WebSocket.Server({ server });
+  const wss = new WebSocket.Server({ noServer: true });
+
+  const existingUpgradeListeners = server.listeners('upgrade').slice();
+  server.removeAllListeners('upgrade');
+  server.on('upgrade', (request, socket, head) => {
+    const requestPath = ((request.url || '').split('?')[0] || '').toLowerCase();
+
+    if (requestPath === '/ws' || requestPath === '/ws/') {
+      wss.handleUpgrade(request, socket, head, upgradedSocket => {
+        wss.emit('connection', upgradedSocket, request);
+      });
+      return;
+    }
+
+    if (existingUpgradeListeners.length === 0) {
+      socket.destroy();
+      return;
+    }
+
+    existingUpgradeListeners.forEach(listener => {
+      listener.call(server, request, socket, head);
+    });
+  });
+
   console.log('WebSocket server initialized');
 const VideoRoom = require('./models/VideoRoom');
 const jwt = require('jsonwebtoken');

@@ -2357,7 +2357,7 @@ Hello World"></textarea>
         // Hide loading overlay - don't wait for WebSocket
         document.getElementById('loadingOverlay').classList.add('hidden');
         
-        wsConnection = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
+        wsConnection = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`);
         
         wsConnection.onopen = () => {
           console.log('✅ Connected to WebSocket');

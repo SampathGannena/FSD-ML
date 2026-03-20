@@ -9,7 +9,7 @@
   body {
     font-family: 'Poppins', sans-serif;
     margin: 0;
-    padding-top: 88px; /* Pushes content below top navbar */
+    padding-top: 90px; /* Pushes content below top navbar */
     background: #121212;
     color: #fff;
     overflow-x: hidden;
@@ -26,29 +26,44 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(6, 10, 18, 0.58);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 12px 40px;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    padding: 12px 36px;
     border-radius: 0;
     border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+    isolation: isolate;
     z-index: 1000;
-    transition: transform 0.35s ease, background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, top 0.35s ease;
+    transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, top 0.3s ease, width 0.3s ease;
 }
 
+  .navbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08) 55%, rgba(255, 255, 255, 0.2));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .navbar > * {
+    position: relative;
+    z-index: 1;
+  }
+
   body.nav-scrolled .navbar {
-    top: 10px;
-    transform: translateX(-50%) scale(0.985);
+    top: 14px;
+    transform: translateX(-50%);
     left: 50%;
-    width: min(1320px, calc(100% - 44px));
-    background: rgba(4, 8, 16, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 999px;
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+    width: 76%;
+    max-width: 85%;
+    background: linear-gradient(130deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.22));
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.65);
   }
   
   .logo {
@@ -73,7 +88,7 @@
   
   .logo h1 {
     font-size: 1.5rem;
-    color: #fff;
+    color: #111827;
   }
 
   /* Hamburger Menu */
@@ -88,22 +103,35 @@
     display: block;
     width: 25px;
     height: 3px;
-    background: white;
+    background: #1f2937;
     transition: 0.3s;
 }
 
 /* Responsive Navbar */
 @media (max-width: 768px) {
+  body.nav-scrolled .navbar {
+    top: 8px;
+    left: 50%;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    transform: translateX(-50%);
+    border-radius: 14px;
+  }
+
     .nav-links {
         display: none;
         flex-direction: column;
         position: absolute;
-        top: 60px;
-        right: 0;
-        background: rgba(0, 0, 0, 0.8);
-        width: 200px;
-        padding: 20px;
-        border-radius: 10px;
+        top: 72px;
+        right: 10px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3));
+      backdrop-filter: blur(18px) saturate(170%);
+      -webkit-backdrop-filter: blur(18px) saturate(170%);
+        width: 220px;
+        padding: 14px;
+        border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.52);
+      box-shadow: 0 20px 35px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.65);
     }
 
     .nav-links.active {
@@ -128,19 +156,21 @@
 
 .nav-links a {
     text-decoration: none;
-  color: rgba(255, 255, 255, 0.9);
-    font-weight: bold;
-  transition: color 0.25s ease, text-shadow 0.25s ease;
+  color: #374151;
+    font-weight: 600;
+  transition: color 0.22s ease, background 0.22s ease;
     padding: 8px 12px;
   position: relative;
+  border-radius: 10px;
 }
 
 .nav-links a::after {
   content: '';
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 2px;
+  left: 50%;
+  width: 32px;
+  margin-left: -16px;
+  bottom: 3px;
   height: 2px;
   border-radius: 999px;
   background: linear-gradient(90deg, #ff8b2c, #ff4b2b);
@@ -150,8 +180,8 @@
 }
 
 .nav-links a:hover, .nav-links a.active {
-  color: #ffffff;
-  text-shadow: 0 0 14px rgba(255, 139, 44, 0.5);
+  color: #ff4b2b;
+  background: rgba(255, 255, 255, 0.46);
 }
 
 .nav-links a:hover::after,
@@ -493,17 +523,17 @@
   }
   /* Enhanced responsive styles */
   @media (max-width: 1024px) {
-    .navbar { padding: 12px 30px; }
+    .navbar { padding: 12px 22px; }
     .stats-container { grid-template-columns: repeat(2, 1fr); }
     .cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   }
-      top: 78px;
-      right: 12px;
-      background: rgba(6, 10, 18, 0.96);
-      width: 230px;
+
+  @media (max-width: 768px) {
+    .navbar { padding: 10px 14px; }
     .logo h1 { font-size: 1.2rem; }
-      border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .logo img { width: 50px; height: 50px; }
+    .nav-links { gap: 8px; padding: 12px; width: 100%; max-width: 240px; }
+    .nav-links li a { padding: 10px 12px; font-size: 14px; }
     .stats-container { grid-template-columns: 1fr; gap: 15px; }
     .stat-card { padding: 15px; }
     .stat-value { font-size: 1.8rem; }
@@ -511,7 +541,7 @@
   }
 
   @media (max-width: 360px) {
-    .navbar { padding: 8px 15px; }
+    .navbar { padding: 8px 12px; }
     .logo h1 { font-size: 1.1rem; }
     .logo img { width: 45px; height: 45px; }
     .stat-card { padding: 12px; }
