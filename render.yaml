@@ -4,12 +4,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: |
-      cd Backend
-      npm ci --omit=dev --no-audit --prefer-offline
-      cd ml
-      pip install --no-cache-dir -r requirements-render.txt
-      cd ../..
+    buildCommand: cd Backend && npm ci --omit=dev --no-audit --prefer-offline && pip install --no-cache-dir -r ml/requirements-render.txt
     startCommand: cd Backend && node server.js
     healthCheckPath: /health
     envVars:

@@ -22,7 +22,7 @@ PYTHON_VERSION=3.11.0
 In **Settings** → **Build Command**, update to:
 
 ```bash
-cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
+cd Backend && npm ci --omit=dev --no-audit --prefer-offline && pip install --no-cache-dir -r ml/requirements-render.txt
 ```
 
 Use this for Render web services. Do not create a virtual environment in the build command (it adds extra time and is not needed on Render).
@@ -49,7 +49,7 @@ services:
   - type: web
     name: fsd-ml-backend
     env: node
-    buildCommand: cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
+    buildCommand: cd Backend && npm ci --omit=dev --no-audit --prefer-offline && pip install --no-cache-dir -r ml/requirements-render.txt
     startCommand: cd Backend && node server.js
     envVars:
       - key: PYTHON_VERSION
@@ -123,9 +123,7 @@ services:
     buildCommand: |
       cd Backend
       npm ci --omit=dev --no-audit --prefer-offline
-      cd ml
-      pip install --no-cache-dir -r requirements-render.txt
-      cd ../..
+      pip install --no-cache-dir -r ml/requirements-render.txt
     startCommand: cd Backend && node server.js
     healthCheckPath: /health
     envVars:
@@ -269,7 +267,7 @@ python-3.11.0
 
 **Solution:** Verify build command installed packages:
 ```bash
-cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
+cd Backend && npm ci --omit=dev --no-audit --prefer-offline && pip install --no-cache-dir -r ml/requirements-render.txt
 ```
 
 ### Recommendations return empty
