@@ -17,6 +17,9 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
+    torch = None  # type: ignore
+    nn = None  # type: ignore
+    F = None  # type: ignore
     logger.warning("PyTorch not available. GNN recommender will use fallback mode.")
 
 # PyTorch Geometric imports (optional)
@@ -26,6 +29,9 @@ try:
     PYGEOMETRIC_AVAILABLE = True
 except ImportError:
     PYGEOMETRIC_AVAILABLE = False
+    SAGEConv = None  # type: ignore
+    LGConv = None  # type: ignore
+    Data = None  # type: ignore
     if TORCH_AVAILABLE:
         logger.warning("PyTorch Geometric not available. Install with: pip install torch-geometric")
 
@@ -228,6 +234,11 @@ class GNNRecommender:
         self.reverse_user_map = {}
         self.reverse_item_map = {}
         self.is_trained = False
+
+        # Fallback graph statistics used when torch/pyg is unavailable.
+        self.user_items = {}
+        self.item_users = {}
+        self.item_popularity = {}
         
         # Graph data
         self.edge_index = None
@@ -244,8 +255,30 @@ class GNNRecommender:
             user_features: Optional user feature dict {user_id: features}
             item_features: Optional item feature dict {item_id: features}
         """
+        # Always build id maps and fallback statistics so the recommender can run
+        # even when torch/pyg is not installed in lightweight deployments.
+        self.user_items = {}
+        self.item_users = {}
+        self.item_popularity = {}
+
+        for interaction in interactions:
+            user_id = interaction['user_id']
+            item_id = interaction['item_id']
+            weight = float(interaction.get('weight', 1.0))
+
+            self.user_items.setdefault(user_id, set()).add(item_id)
+            self.item_users.setdefault(item_id, set()).add(user_id)
+            self.item_popularity[item_id] = self.item_popularity.get(item_id, 0.0) + weight
+
         if not TORCH_AVAILABLE:
-            logger.error("PyTorch not available. Cannot build graph.")
+            logger.warning("PyTorch not available. Using heuristic graph fallback mode.")
+
+            unique_users = sorted(set([i['user_id'] for i in interactions]))
+            unique_items = sorted(set([i['item_id'] for i in interactions]))
+            self.user_id_map = {user_id: idx for idx, user_id in enumerate(unique_users)}
+            self.item_id_map = {item_id: idx for idx, item_id in enumerate(unique_items)}
+            self.reverse_user_map = {idx: user_id for user_id, idx in self.user_id_map.items()}
+            self.reverse_item_map = {idx: item_id for item_id, idx in self.item_id_map.items()}
             return
         
         logger.info("Building interaction graph...")
@@ -319,8 +352,16 @@ class GNNRecommender:
             learning_rate: Learning rate
             batch_size: Batch size for training
         """
+        if not interactions:
+            logger.warning("No interactions available for GNN training")
+            self.is_trained = False
+            return
+
         if not TORCH_AVAILABLE or self.model is None:
-            logger.error("Cannot train: PyTorch or model not available")
+            # Fallback mode: graph similarity with co-interaction statistics.
+            self.build_graph(interactions)
+            self.is_trained = True
+            logger.info("GNN fallback training complete")
             return
         
         logger.info(f"Training {self.model_type} model...")
@@ -331,6 +372,7 @@ class GNNRecommender:
         
         for epoch in range(epochs):
             optimizer.zero_grad()
+            loss = None
             
             if self.model_type == 'lightgcn':
                 user_emb, item_emb = self.model(self.edge_index)
@@ -382,12 +424,15 @@ class GNNRecommender:
                     loss += -F.logsigmoid(pos_score - neg_score)
                 
                 loss = loss / num_samples
+            else:
+                logger.error(f"Unknown GNN model type: {self.model_type}")
+                break
             
-            if hasattr(loss, 'backward'):
+            if loss is not None and hasattr(loss, 'backward'):
                 loss.backward()
             optimizer.step()
             
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 10 == 0 and loss is not None:
                 loss_val = loss.item() if hasattr(loss, 'item') else float(loss)
                 logger.info(f"Epoch {epoch + 1}/{epochs}, Loss: {loss_val:.4f}")
         
@@ -407,9 +452,42 @@ class GNNRecommender:
         Returns:
             List of (item_id, score) tuples
         """
-        if not self.is_trained or not TORCH_AVAILABLE:
-            logger.warning("GNN model not trained or PyTorch unavailable")
+        if not self.is_trained:
+            logger.warning("GNN model not trained")
             return []
+
+        if not TORCH_AVAILABLE:
+            # Heuristic graph fallback: item-item co-user similarity + popularity prior.
+            candidate_set = set(item_candidates)
+            scored = []
+
+            seen_items = self.user_items.get(user_id, set())
+            if seen_items:
+                for item_id in item_candidates:
+                    if item_id in seen_items:
+                        continue
+
+                    users_b = self.item_users.get(item_id, set())
+                    sim_sum = 0.0
+                    for seen_id in seen_items:
+                        users_a = self.item_users.get(seen_id, set())
+                        if not users_a or not users_b:
+                            continue
+                        common = len(users_a & users_b)
+                        denom = float(np.sqrt(len(users_a) * len(users_b)))
+                        if denom > 0:
+                            sim_sum += common / denom
+
+                    popularity = self.item_popularity.get(item_id, 0.0)
+                    score = sim_sum + 0.01 * popularity
+                    scored.append((item_id, score))
+            else:
+                # Cold-start user fallback to popularity in candidate set.
+                for item_id in candidate_set:
+                    scored.append((item_id, self.item_popularity.get(item_id, 0.0)))
+
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return scored[:top_k]
         
         if user_id not in self.user_id_map:
             logger.debug(f"User {user_id} not in graph (cold start)")

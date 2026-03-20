@@ -149,16 +149,29 @@ class RecommendationAPI:
             # Build interaction matrix
             builder = build_interaction_matrix_from_db(self.collections)
             interactions = builder.get_interactions()
-            
-            if len(interactions) > 100:
-                # Train collaborative filter
+
+            interaction_count = len(interactions)
+
+            # Use practical thresholds so models can be enabled earlier in production.
+            # Collaborative works with small implicit datasets; GNN works with either
+            # torch backend or heuristic fallback backend.
+            if interaction_count >= 5:
                 logger.info("Training collaborative filter...")
                 self.ensemble.train_collaborative(interactions, use_svd=True)
-                
-                # Train GNN if enough data
-                if len(interactions) > 500:
-                    logger.info("Training GNN...")
-                    self.ensemble.train_gnn(interactions, epochs=30)
+            else:
+                logger.info(
+                    "Skipping collaborative training: need at least 5 interactions "
+                    f"(have {interaction_count})"
+                )
+
+            if interaction_count >= 20:
+                logger.info("Training GNN...")
+                self.ensemble.train_gnn(interactions, epochs=20)
+            else:
+                logger.info(
+                    "Skipping GNN training: need at least 20 interactions "
+                    f"(have {interaction_count})"
+                )
             
             self.is_initialized = True
             
@@ -167,7 +180,7 @@ class RecommendationAPI:
                 "status": "success",
                 "message": "Recommendation system initialized",
                 "models": status,
-                "interaction_count": len(interactions)
+                "interaction_count": interaction_count
             }
         
         except Exception as e:
