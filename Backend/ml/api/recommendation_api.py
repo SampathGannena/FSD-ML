@@ -49,6 +49,7 @@ class RecommendationAPI:
         self.db = None
         self.collections = {}
         self.is_initialized = False
+        self.db_error = None
         
         # Connect to MongoDB if available
         if MONGO_AVAILABLE:
@@ -60,6 +61,7 @@ class RecommendationAPI:
             if not MONGO_AVAILABLE or os is None or MongoClient is None:
                 logger.error("MongoDB dependencies not available")
                 self.db = None
+                self.db_error = "MongoDB dependencies not available"
                 return
                 
             # Support both naming conventions used across this project.
@@ -69,7 +71,19 @@ class RecommendationAPI:
                 or 'mongodb://localhost:27017/fsd_ml'
             )
             client = MongoClient(mongo_uri)  # type: ignore
-            self.db = client.get_database()
+            
+            # Prefer DB name from URI; fallback to explicit env var/default.
+            # This project commonly uses the Atlas default "test" DB when URI has no path.
+            db_name = os.getenv('MONGO_DB_NAME', 'test')  # type: ignore
+            try:
+                self.db = client.get_default_database(default=db_name)
+            except Exception:
+                self.db = None
+            if self.db is None:
+                self.db = client[db_name]
+            
+            # Fast connection check so status reflects real DB availability.
+            client.admin.command('ping')
             
             # Get collections
             self.collections = {
@@ -81,10 +95,31 @@ class RecommendationAPI:
                 'goals': self.db.goals
             }
             
-            logger.info("Connected to MongoDB successfully")
+            logger.info(f"Connected to MongoDB successfully (db={self.db.name})")
+            self.db_error = None
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             self.db = None
+            self.collections = {}
+            self.db_error = str(e)
+
+    def _ensure_db_ready(self):
+        """Return an error response if database/collections are not ready."""
+        required = ['users', 'mentors', 'study_sessions', 'groups', 'goals']
+        if self.db is None:
+            return {
+                "status": "error",
+                "message": "Database not available",
+                "details": self.db_error
+            }
+        missing = [name for name in required if name not in self.collections]
+        if missing:
+            return {
+                "status": "error",
+                "message": "Required database collections are unavailable",
+                "details": f"Missing collections: {', '.join(missing)}"
+            }
+        return None
 
     def _normalize_mongo_id(self, raw_id: Any):
         """Best-effort conversion of incoming IDs to ObjectId when valid."""
@@ -105,9 +140,10 @@ class RecommendationAPI:
     def initialize(self, params):
         """Initialize the recommendation system"""
         logger.info("Initializing recommendation system...")
-        
-        if self.db is None:
-            return {"status": "error", "message": "Database not available"}
+
+        db_error = self._ensure_db_ready()
+        if db_error:
+            return db_error
         
         try:
             # Build interaction matrix
@@ -145,6 +181,10 @@ class RecommendationAPI:
         
         if not user_id:
             return {"status": "error", "message": "user_id required"}
+
+        db_error = self._ensure_db_ready()
+        if db_error:
+            return db_error
         
         try:
             # Fetch user data
@@ -197,6 +237,10 @@ class RecommendationAPI:
         """Generate session recommendations"""
         user_id = params.get('user_id')
         top_k = params.get('top_k', 10)
+
+        db_error = self._ensure_db_ready()
+        if db_error:
+            return db_error
         
         try:
             user_doc = self.collections['users'].find_one({'_id': self._normalize_mongo_id(user_id)})
@@ -246,6 +290,10 @@ class RecommendationAPI:
         """Generate group recommendations"""
         user_id = params.get('user_id')
         top_k = params.get('top_k', 10)
+
+        db_error = self._ensure_db_ready()
+        if db_error:
+            return db_error
         
         try:
             user_doc = self.collections['users'].find_one({'_id': self._normalize_mongo_id(user_id)})
@@ -295,6 +343,10 @@ class RecommendationAPI:
         """Train recommendation models"""
         model_type = params.get('model_type', 'all')
         epochs = params.get('epochs', 50)
+
+        db_error = self._ensure_db_ready()
+        if db_error:
+            return db_error
         
         try:
             builder = build_interaction_matrix_from_db(self.collections)
@@ -324,7 +376,8 @@ class RecommendationAPI:
             "status": "success",
             "initialized": self.is_initialized,
             "models": self.ensemble.get_model_status(),
-            "database_connected": self.db is not None
+            "database_connected": self.db is not None,
+            "db_error": self.db_error
         }
 
 

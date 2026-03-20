@@ -54,6 +54,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: MONGO_DB_NAME
+        value: "test"
       - key: MONGO_URI
         sync: false
       - key: MONGODB_URI
@@ -131,6 +133,8 @@ services:
         value: production
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: MONGO_DB_NAME
+        value: "test"
       - key: MONGO_URI
         sync: false
       - key: MONGODB_URI
@@ -150,6 +154,7 @@ Make sure these are set in Render Dashboard → Environment:
 |----------|-------|-------|
 | `MONGO_URI` | Your MongoDB Atlas URI | Required (Node backend) |
 | `MONGODB_URI` | Same MongoDB URI | Recommended (Python recommender) |
+| `MONGO_DB_NAME` | `test` | Recommended when URI has no database name |
 | `JWT_SECRET` | Your secret key | Required |
 | `PYTHON_VERSION` | `3.11.0` | For Python support |
 | `NODE_ENV` | `production` | For production mode |
