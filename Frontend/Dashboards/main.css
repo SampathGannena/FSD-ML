@@ -1700,7 +1700,7 @@
 }
 /* ==================== ENHANCED MOBILE RESPONSIVE ==================== */
 @media (max-width: 1024px) {
-  .navbar { padding: 12px 22px; }
+  .navbar { padding: 12px 32px; }
   .main-content { padding: 20px 15px; }
   .stats-container { grid-template-columns: repeat(2, 1fr); gap: 15px; }
 }

@@ -531,7 +531,7 @@
   }
   /* Enhanced responsive styles */
   @media (max-width: 1024px) {
-    .navbar { padding: 12px 22px; }
+    .navbar { padding: 12px 32px; }
     .stats-container { grid-template-columns: repeat(2, 1fr); }
     .cards-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   }

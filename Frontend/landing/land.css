@@ -1528,7 +1528,7 @@ body {
 /* Tablet Landscape - 1024px and below */
 @media (max-width: 1024px) {
     .navbar {
-        padding: 12px 22px;
+        padding: 12px 32px;
     }
     
     .hero h1 {

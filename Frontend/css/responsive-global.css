@@ -136,7 +136,7 @@ input, textarea, select {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 22px;
+    padding: 12px 32px;
     flex-wrap: wrap;
     background: linear-gradient(120deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
     backdrop-filter: blur(18px) saturate(180%);
