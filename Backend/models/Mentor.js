@@ -7,6 +7,13 @@ const mentorSchema = new mongoose.Schema({
   password: { type: String, required: true },
   resetToken: String,
   resetTokenExpiry: Date,
+  subscription: {
+    plan: { type: String, enum: ['starter', 'premium', 'enterprise'], default: 'starter' },
+    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
+    status: { type: String, enum: ['active', 'trial', 'paused', 'cancelled'], default: 'active' },
+    startedAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  },
   groups: [{ type: String }], // Array of group names the mentor has joined
 });
 

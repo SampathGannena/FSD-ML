@@ -4,6 +4,7 @@ const mentorAuth = require('../controllers/mentorAuth');
 const mentorAuthMiddleware = require('../middleware/mentorAuthMiddleware');
 const StudySession = require('../models/StudySession');
 const User = require('../models/User');
+const { getSubscriptionForResponse } = require('../config/subscriptionFeatures');
 
 router.post('/signup', mentorAuth.signup);
 router.post('/signin', mentorAuth.mentorSignin);
@@ -50,7 +51,8 @@ router.get('/profile', mentorAuthMiddleware, async (req, res) => {
         fullname: mentor.fullname,
         email: mentor.email,
         domainId: mentor.domainId,
-        groups: mentorGroups
+        groups: mentorGroups,
+        subscription: getSubscriptionForResponse(mentor.subscription)
       },
       stats: {
         menteesGuided: acceptedMentees,

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { getSubscriptionForResponse } = require('../config/subscriptionFeatures');
 
 exports.signup = async (req, res) => {
   try {
@@ -70,7 +71,8 @@ exports.mentorSignin = async (req, res) => {
           id: mentor._id,
           fullname: mentor.fullname,
           email: mentor.email,
-          domainId: mentor.domainId
+          domainId: mentor.domainId,
+          subscription: getSubscriptionForResponse(mentor.subscription)
         }
       });
     } catch (err) {

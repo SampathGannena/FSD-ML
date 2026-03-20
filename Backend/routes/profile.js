@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
+const { getSubscriptionForResponse } = require('../config/subscriptionFeatures');
 
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
@@ -21,7 +22,8 @@ router.get('/profile', authMiddleware, async (req, res) => {
       courses: user.courses || 0,
       badges: user.badges || [],
       groups: user.groups || [],
-      bio: user.bio || ''
+      bio: user.bio || '',
+      subscription: getSubscriptionForResponse(user.subscription)
     });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="../js/notifications.js"></script>
+  <script src="../js/subscription-access.js"></script>
   <style>
     * {
       margin: 0;
@@ -1187,7 +1188,7 @@ Hello World"></textarea>
     let wordWrapEnabled = false;
 
     // ============ Initialization ============
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // Get all params from URL
       const urlParams = new URLSearchParams(window.location.search);
       selectedGroupName = urlParams.get('group') || 'Unknown Group';
@@ -1210,6 +1211,23 @@ Hello World"></textarea>
         name: userName,
         token: token
       };
+
+      if (!token) {
+        alert('Please sign in to access the code editor.');
+        window.location.href = 'groups.html';
+        return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('code_editor', {
+          featureName: 'Code editor'
+        });
+
+        if (!access.allowed) {
+          window.location.href = 'groups.html';
+          return;
+        }
+      }
       
     //   console.log('User info:', { userName, userId, hasToken: !!token });
 
@@ -1861,8 +1879,8 @@ Hello World"></textarea>
       const token = currentUser.token;
       
       if (!token) {
-        console.log('No token available, connecting directly...');
-        connectWebSocket();
+        loadingOverlay.classList.add('hidden');
+        showAccessDeniedModal('Authentication required. Please sign in again.');
         return;
       }
       
@@ -1964,7 +1982,7 @@ Hello World"></textarea>
         // Hide loading overlay - don't wait for WebSocket
         document.getElementById('loadingOverlay').classList.add('hidden');
         
-        wsConnection = new WebSocket('${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}');
+        wsConnection = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
         
         wsConnection.onopen = () => {
           console.log('✅ Connected to WebSocket');
@@ -1974,7 +1992,8 @@ Hello World"></textarea>
             type: 'join_code_session',
             groupName: selectedGroupName,
             userId: currentUser.id,
-            userName: currentUser.name
+            userName: currentUser.name,
+            token: currentUser.token
           }));
           
           showNotification('Connected to collaboration server', 'success');
@@ -2015,7 +2034,7 @@ Hello World"></textarea>
         case 'error':
           // Handle access errors from server
           console.error('Server error:', data.message);
-          if (data.errorType === 'NOT_A_MEMBER' || data.errorType === 'GROUP_NOT_FOUND') {
+          if (data.errorType === 'NOT_A_MEMBER' || data.errorType === 'GROUP_NOT_FOUND' || data.errorType === 'FEATURE_LOCKED') {
             showAccessDeniedModal(data.message);
             if (wsConnection) {
               wsConnection.close();

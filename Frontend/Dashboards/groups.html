@@ -5,6 +5,7 @@
   <title>Study Groups - Jarvis</title>
   <script src="../js/notifications.js"></script>
   <script src="../js/auth-guard.js"></script>
+  <script src="../js/subscription-access.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -3419,15 +3420,38 @@
     };
     
     // Add other missing function stubs that are properly defined
-    window.startVideoCall = function() {
-      console.log('🎥 startVideoCall called');
-      alert('Video call feature will be implemented soon!');
-    };
-    
-    window.openWhiteboard = function() {
+    window.startVideoCall = async function() {
       if (!selectedGroupName) {
         Toast.warning('Please select a group first', 'No Group Selected');
         return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('video_calls', {
+          featureName: 'Video calls'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
+
+      const roomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
+      window.open(`../mentorDash/videoRoom.html?room=${encodeURIComponent(roomCode)}`, '_blank');
+    };
+    
+    window.openWhiteboard = async function() {
+      if (!selectedGroupName) {
+        Toast.warning('Please select a group first', 'No Group Selected');
+        return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('whiteboard', {
+          featureName: 'Whiteboard'
+        });
+        if (!access.allowed) {
+          return;
+        }
       }
       
       // Open whiteboard in new window
@@ -3443,8 +3467,18 @@
       );
     }; 
     
-    window.shareFiles = function() {
+    window.shareFiles = async function() {
       console.log('📎 shareFiles called');
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+          featureName: 'File sharing'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
+
       const fileInput = document.getElementById('file-upload');
       if (fileInput) {
         fileInput.click();
@@ -4837,26 +4871,70 @@
       }
     }
 
-    function startVideoCall() {
-      alert('Starting group video call...\n\nFeatures:\n• Up to 10 participants\n• Screen sharing\n• Chat during call\n• Recording option\n\nConnecting to video room...');
-      // Redirect to video call page or open in new window
-      // window.open('/video-room/' + selectedGroupName, '_blank');
-    }
-
-    function openWhiteboard() {
-      alert('Opening collaborative whiteboard...\n\nFeatures:\n• Real-time drawing\n• Text annotations\n• Shape tools\n• Save and export\n\nLaunching whiteboard...');
-      // Open whiteboard in new tab
-      // window.open('/whiteboard/' + selectedGroupName, '_blank');
-    }
-
-    // Open code editor in separate page
-    function openCodeEditor() {
+    async function startVideoCall() {
       if (!selectedGroupName) {
         alert('Please select a group first');
         return;
       }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('video_calls', {
+          featureName: 'Video calls'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
+
+      const roomCode = selectedGroupName.replace(/\s+/g, '-').toUpperCase();
+      window.open(`../mentorDash/videoRoom.html?room=${encodeURIComponent(roomCode)}`, '_blank');
+    }
+
+    async function openWhiteboard() {
+      if (!selectedGroupName) {
+        alert('Please select a group first');
+        return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('whiteboard', {
+          featureName: 'Whiteboard'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
+
+      const width = 1200;
+      const height = 800;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+
+      window.open(
+        `whiteboard.html?group=${encodeURIComponent(selectedGroupName)}`,
+        'Whiteboard',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
+    }
+
+    // Open code editor in separate page
+    async function openCodeEditor() {
+      if (!selectedGroupName) {
+        alert('Please select a group first');
+        return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('code_editor', {
+          featureName: 'Code editor'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
+
       // Get user info to pass to code editor
-      const token = localStorage.getItem('token') || '';
+      const token = localStorage.getItem('token') || localStorage.getItem('mentorToken') || '';
       const userName = localStorage.getItem('userName') || 'Anonymous';
       const userId = localStorage.getItem('userId') || 'user_' + Date.now();
       
@@ -6059,8 +6137,19 @@
       console.log('=== UPLOADING FILE TO GROUP ===');
       console.log('File:', file.name);
       console.log('Group:', groupName);
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+          featureName: 'File sharing'
+        });
+        if (!access.allowed) {
+          return;
+        }
+      }
       
-      const token = localStorage.getItem('token');
+      const token = window.SubscriptionAccess
+        ? window.SubscriptionAccess.getAuthToken()
+        : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
       if (!token) {
         alert('Please log in to upload files');
         return;
@@ -6284,8 +6373,32 @@
     async function loadGroupFiles(groupName) {
       try {
         console.log('Loading files for group:', groupName);
+        const token = window.SubscriptionAccess
+          ? window.SubscriptionAccess.getAuthToken()
+          : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+        if (!token) {
+          window.currentGroupFiles = [];
+          updateResourcesDisplay([]);
+          return;
+        }
         
-        const response = await fetch(`${window.location.origin}/api/group-files/${groupName}`);
+        const response = await fetch(`${window.location.origin}/api/group-files/${groupName}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 403) {
+          if (window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+          }
+          window.currentGroupFiles = [];
+          updateResourcesDisplay([]);
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -6318,8 +6431,32 @@
       }
 
       try {
-        const response = await fetch(`${window.location.origin}/api/files/${currentGroupId}`);
-        const files = await response.json();
+        const token = window.SubscriptionAccess
+          ? window.SubscriptionAccess.getAuthToken()
+          : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+        if (!token) {
+          console.warn('No token available for resources fetch');
+          return;
+        }
+
+        const response = await fetch(`${window.location.origin}/api/files/${currentGroupId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 403) {
+          if (window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+          }
+          return;
+        }
+
+        const payload = await response.json();
+        const files = Array.isArray(payload) ? payload : (payload.files || []);
         
         console.log(`Found ${files.length} files for group:`, currentGroupId);
         
@@ -6405,8 +6542,27 @@
     async function loadGroupFiles(groupName) {
         try {
           console.log('Loading group files (chat version):', groupName);
+
+          const token = window.SubscriptionAccess
+            ? window.SubscriptionAccess.getAuthToken()
+            : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+          if (!token) {
+            return;
+          }
           
-          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.status === 403 && window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+            return;
+          }
           
           if (response.ok) {
             const data = await response.json();
@@ -6458,12 +6614,35 @@
       `;
       
       try {
-        const token = localStorage.getItem('token');
+        const token = window.SubscriptionAccess
+          ? window.SubscriptionAccess.getAuthToken()
+          : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+        if (!token) {
+          resourcesGrid.innerHTML = `
+            <div class="empty-resources">
+              <i class="fas fa-lock"></i>
+              <h4>Sign In Required</h4>
+              <p>Please sign in to access shared resources.</p>
+            </div>
+          `;
+          return;
+        }
+
         const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+
+        if (response.status === 403) {
+          if (window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+          }
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -6606,17 +6785,48 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    function downloadGroupFile(filename, originalname) {
-      // Use the proper download API endpoint that handles file serving
-      const downloadUrl = `${window.location.origin}/api/download/${encodeURIComponent(filename)}`;
-      
-      // Create a hidden link and trigger download
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = originalname; // Browser may override with Content-Disposition header
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    async function downloadGroupFile(filename, originalname) {
+      try {
+        const token = window.SubscriptionAccess
+          ? window.SubscriptionAccess.getAuthToken()
+          : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+        if (!token) {
+          alert('Please sign in to download files.');
+          return;
+        }
+
+        const downloadUrl = `${window.location.origin}/api/download/${encodeURIComponent(filename)}`;
+        const response = await fetch(downloadUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 403 && window.SubscriptionAccess) {
+          await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+            featureName: 'File sharing'
+          });
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Download failed with status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = originalname || filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch (error) {
+        console.error('Download failed:', error);
+        alert('Unable to download file right now. Please try again.');
+      }
     }
 
     async function loadGroupStats(groupName) {
@@ -7550,8 +7760,27 @@
     async function loadGroupFiles(groupName) {
         try {
           console.log('Loading group files (chat version):', groupName);
+
+          const token = window.SubscriptionAccess
+            ? window.SubscriptionAccess.getAuthToken()
+            : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+          if (!token) {
+            return;
+          }
           
-          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.status === 403 && window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+            return;
+          }
           
           if (response.ok) {
             const data = await response.json();
@@ -7609,8 +7838,27 @@
       async function loadGroupFiles(groupName) {
         try {
           console.log('Loading group files (chat version):', groupName);
+
+          const token = window.SubscriptionAccess
+            ? window.SubscriptionAccess.getAuthToken()
+            : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+          if (!token) {
+            return;
+          }
           
-          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`);
+          const response = await fetch(`${window.location.origin}/api/group-files/${encodeURIComponent(groupName)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.status === 403 && window.SubscriptionAccess) {
+            await window.SubscriptionAccess.ensureFeatureAccess('file_sharing', {
+              featureName: 'File sharing'
+            });
+            return;
+          }
           
           if (response.ok) {
             const data = await response.json();

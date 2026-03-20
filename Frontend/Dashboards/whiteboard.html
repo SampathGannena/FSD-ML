@@ -6,6 +6,7 @@
   <title>Collaborative Whiteboard - StudyFinder</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="../js/notifications.js"></script>
+  <script src="../js/subscription-access.js"></script>
   <style>
     * {
       margin: 0;
@@ -641,11 +642,31 @@
     let collaborators = new Map();
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       if (!groupName) {
         alert('No group specified!');
         goBackToGroups();
         return;
+      }
+
+      const token = window.SubscriptionAccess
+        ? window.SubscriptionAccess.getAuthToken()
+        : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || '');
+
+      if (!token) {
+        alert('Please sign in to access the whiteboard.');
+        goBackToGroups();
+        return;
+      }
+
+      if (window.SubscriptionAccess) {
+        const access = await window.SubscriptionAccess.ensureFeatureAccess('whiteboard', {
+          featureName: 'Whiteboard'
+        });
+        if (!access.allowed) {
+          goBackToGroups();
+          return;
+        }
       }
 
       document.getElementById('groupName').textContent = decodeURIComponent(groupName);
@@ -712,6 +733,9 @@
         socket.send(JSON.stringify({
           type: 'join_whiteboard',
           groupName: groupName,
+          token: window.SubscriptionAccess
+            ? window.SubscriptionAccess.getAuthToken()
+            : (localStorage.getItem('token') || localStorage.getItem('mentorToken') || ''),
           userId: localStorage.getItem('userId') || 'user_' + Date.now(),
           userName: localStorage.getItem('userName') || 'Anonymous'
         }));
@@ -736,8 +760,13 @@
       switch(data.type) {
         case 'whiteboard_joined':
           Toast.success(`Joined whiteboard`, 'Connected');
-          if (data.canvasData) {
+          if (Array.isArray(data.canvasData)) {
+            data.canvasData.forEach(event => drawRemotePath(event));
+          } else if (data.canvasData) {
             loadCanvasData(data.canvasData);
+          }
+          if (Array.isArray(data.collaborators)) {
+            updateCollaboratorsList(data.collaborators);
           }
           break;
         
@@ -764,6 +793,11 @@
 
         case 'collaborators_update':
           updateCollaboratorsList(data.collaborators);
+          break;
+
+        case 'error':
+          alert(data.message || 'Whiteboard access denied');
+          goBackToGroups();
           break;
       }
     }

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
+const { getSubscriptionForResponse } = require('../config/subscriptionFeatures');
 
 
 exports.signup =   async (req, res) => {
@@ -53,7 +54,15 @@ exports.signin = async (req, res) => {
   
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
   
-      res.status(200).json({ token, user: { id: user._id, fullname: user.fullname, email: user.email } });
+      res.status(200).json({
+        token,
+        user: {
+          id: user._id,
+          fullname: user.fullname,
+          email: user.email,
+          subscription: getSubscriptionForResponse(user.subscription)
+        }
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

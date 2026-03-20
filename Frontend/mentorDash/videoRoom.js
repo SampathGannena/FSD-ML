@@ -33,6 +33,18 @@ class VideoRoom {
       return;
     }
 
+    if (window.SubscriptionAccess) {
+      const access = await window.SubscriptionAccess.ensureFeatureAccess('video_calls', {
+        featureName: 'Video calls'
+      });
+
+      if (!access.allowed) {
+        const isMentor = !!localStorage.getItem('mentorToken');
+        window.location.href = isMentor ? 'mentorMain.html' : '../Dashboards/groups.html';
+        return;
+      }
+    }
+
     // Setup event listeners
     this.setupEventListeners();
     
@@ -198,6 +210,16 @@ class VideoRoom {
 
   handleWebSocketMessage(data) {
     switch (data.type) {
+      case 'authentication_error':
+        alert(data.message || 'Authentication failed for video room access.');
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.close();
+        }
+        window.location.href = localStorage.getItem('mentorToken')
+          ? 'mentorMain.html'
+          : '../Dashboards/groups.html';
+        break;
+
       case 'room_joined':
         console.log('Joined room with participants:', data.participants);
         data.participants.forEach(participant => {

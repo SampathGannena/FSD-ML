@@ -11,6 +11,13 @@ const userSchema = new mongoose.Schema({
   streak: { type: Number, default: 0 },
   lastActive: { type: Date },
   lastLogout: { type: Date }, // Track when user last logged out
+  subscription: {
+    plan: { type: String, enum: ['starter', 'premium', 'enterprise'], default: 'starter' },
+    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
+    status: { type: String, enum: ['active', 'trial', 'paused', 'cancelled'], default: 'active' },
+    startedAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  },
   groups: [String],
   badges: [String] 
   // groups: [{

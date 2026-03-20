@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/landing/">
+    <title>StudyFinder Pricing</title>
+    <meta name="description" content="Compare StudyFinder pricing plans and choose the right subscription based on your account.">
+    <link rel="stylesheet" href="land.css">
+    <link rel="stylesheet" href="pricing.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="../js/notifications.js"></script>
+    <script defer src="pricing-data.js"></script>
+    <script defer src="pricing-engine.js"></script>
+    <script defer src="pricing.js"></script>
+</head>
+<body class="pricing-page">
+    <header class="pricing-hero">
+        <div class="pricing-hero-overlay"></div>
+        <nav class="pricing-nav">
+            <a href="land.html" class="pricing-brand">
+                <img src="../credentials/image.jpg" alt="StudyFinder logo">
+                <span>StudyFinder</span>
+            </a>
+            <div class="pricing-nav-links">
+                <a href="land.html#features">Features</a>
+                <a href="land.html#demo">Demos</a>
+                <a href="land.html#testimonials">Reviews</a>
+                <a href="next.html" class="nav-cta">Get Started</a>
+            </div>
+        </nav>
+
+        <div class="pricing-hero-content">
+            <p class="eyebrow">Simple plans, dynamic experience</p>
+            <h1>Pricing That Adapts to Your Account</h1>
+            <p>
+                Choose monthly or yearly billing, compare every feature, and save your selected plan instantly.
+                Signed-in users see account-aware actions and current plan state.
+            </p>
+            <div class="hero-actions">
+                <a href="#pricing" class="btn-glow"><i class="fas fa-tags"></i> Compare Plans</a>
+                <a href="land.html" class="btn-outline"><i class="fas fa-arrow-left"></i> Back to Landing</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="pricing-section pricing-page-section" id="pricing" data-pricing-scope="pricing-page">
+            <h2>Choose Your StudyFinder Plan</h2>
+            <p class="pricing-subtitle">Switch plans anytime. Billing and actions update dynamically for each user.</p>
+            <div class="billing-toggle" role="group" aria-label="Billing period">
+                <button type="button" class="billing-btn active" data-billing="monthly">Monthly</button>
+                <button type="button" class="billing-btn" data-billing="yearly">Yearly <span class="billing-save">Save 20%</span></button>
+            </div>
+            <p class="pricing-user-message" id="pricingPageUserMessage">Loading your account-aware pricing view...</p>
+            <div class="pricing-grid" id="pricingPagePricingGrid" aria-live="polite"></div>
+        </section>
+
+        <section class="pricing-faq">
+            <h2>Need Help Deciding?</h2>
+            <div class="faq-grid">
+                <article>
+                    <h3>Can I switch later?</h3>
+                    <p>Yes. You can switch plans anytime from the pricing view. Your latest selection is saved for your account.</p>
+                </article>
+                <article>
+                    <h3>Is Starter always free?</h3>
+                    <p>Yes. Starter remains free with core collaboration features and is available even for guest users.</p>
+                </article>
+                <article>
+                    <h3>How does yearly billing work?</h3>
+                    <p>Yearly mode applies automatic savings and shows the billed yearly amount directly in each plan card.</p>
+                </article>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

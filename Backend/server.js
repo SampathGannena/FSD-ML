@@ -11,7 +11,10 @@ const groupStatsRoutes = require('./routes/groupStatsRoutes');
 const videoRoomRoutes = require('./routes/videoRoomRoutes');
 const studySessionRoutes = require('./routes/studySessionRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
+const combinedAuthMiddleware = require('./middleware/combinedAuthMiddleware');
+const { requireFeature } = require('./middleware/subscriptionMiddleware');
 const cors = require('cors');
 const path = require('path');
 const Group = require('./models/Group');
@@ -103,6 +106,7 @@ app.use('/api/video-rooms', videoRoomRoutes);
 app.use('/api/sessions', studySessionRoutes);
 app.use('/api/groups', groupStatsRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api', subscriptionRoutes);
 
 // ============ MENTOR AVAILABILITY ENDPOINTS ============
 
@@ -606,7 +610,7 @@ app.get('/mentorDash/mentorAdvancedDashboard-test.html', (req, res) => {
 });
 
 
-app.post('/api/group-upload', authMiddleware, upload.single('file'), async (req, res) => {
+app.post('/api/group-upload', combinedAuthMiddleware, requireFeature('file_sharing'), upload.single('file'), async (req, res) => {
   try {
     console.log('=== FILE UPLOAD REQUEST ===');
     console.log('Request body:', req.body);
@@ -683,7 +687,7 @@ app.post('/api/group-upload', authMiddleware, upload.single('file'), async (req,
 // Serve uploaded files statically
 
 // Get files by group ID - alternative endpoint for frontend compatibility
-app.get('/api/files/:groupId', async (req, res) => {
+app.get('/api/files/:groupId', combinedAuthMiddleware, requireFeature('file_sharing'), async (req, res) => {
   try {
     const groupId = decodeURIComponent(req.params.groupId);
     console.log('Fetching files for group ID:', groupId);
@@ -707,7 +711,7 @@ app.get('/api/files/:groupId', async (req, res) => {
   }
 });
 
-app.get('/api/group-files/:group', async (req, res) => {
+app.get('/api/group-files/:group', combinedAuthMiddleware, requireFeature('file_sharing'), async (req, res) => {
   try {
     const groupName = req.params.group;
     console.log('Fetching files for group:', `"${groupName}"`);
@@ -743,7 +747,7 @@ app.get('/api/group-files/:group', async (req, res) => {
 const User = require('./models/User');
 
 // Download file endpoint - properly serves files with correct headers
-app.get('/api/download/:filename', async (req, res) => {
+app.get('/api/download/:filename', combinedAuthMiddleware, requireFeature('file_sharing'), async (req, res) => {
   try {
     const filename = req.params.filename;
     console.log('Download requested for:', filename);
@@ -1437,9 +1441,11 @@ app.use("/api", groupRoutes);
 
 // Store code snippets in memory (could be extended to MongoDB)
 const codeSnippets = new Map();
+// Shared store for code editor sessions used by both HTTP routes and WebSocket handlers.
+const codeEditorSessions = new Map();
 
 // Verify group membership
-app.get('/api/code-editor/verify-membership/:groupName', authMiddleware, async (req, res) => {
+app.get('/api/code-editor/verify-membership/:groupName', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { groupName } = req.params;
     const userId = req.user?.id;
@@ -1482,7 +1488,7 @@ app.get('/api/code-editor/verify-membership/:groupName', authMiddleware, async (
 });
 
 // Get active session info
-app.get('/api/code-editor/session-info/:groupName', authMiddleware, async (req, res) => {
+app.get('/api/code-editor/session-info/:groupName', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { groupName } = req.params;
     
@@ -1518,7 +1524,7 @@ app.get('/api/code-editor/session-info/:groupName', authMiddleware, async (req, 
 });
 
 // Save code for a group
-app.post('/api/code-editor/save', authMiddleware, async (req, res) => {
+app.post('/api/code-editor/save', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { groupName, files } = req.body;
     
@@ -1541,7 +1547,7 @@ app.post('/api/code-editor/save', authMiddleware, async (req, res) => {
 });
 
 // Load code for a group
-app.get('/api/code-editor/load/:groupName', authMiddleware, async (req, res) => {
+app.get('/api/code-editor/load/:groupName', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { groupName } = req.params;
     
@@ -1574,7 +1580,7 @@ app.get('/api/code-editor/load/:groupName', authMiddleware, async (req, res) => 
 });
 
 // Execute code (supports Python, Node.js)
-app.post('/api/code-editor/execute', authMiddleware, async (req, res) => {
+app.post('/api/code-editor/execute', authMiddleware, requireFeature('code_editor'), async (req, res) => {
   try {
     const { code, language, input } = req.body;
     
@@ -1708,9 +1714,43 @@ try {
   console.log('WebSocket server initialized');
 const VideoRoom = require('./models/VideoRoom');
 const jwt = require('jsonwebtoken');
+const { hasFeature } = require('./config/subscriptionFeatures');
 
 let clients = [];
 let videoRoomClients = new Map(); // Map to store room-specific connections
+let whiteboardSessions = new Map(); // groupName -> { events: [], collaborators: Map }
+
+async function resolveSocketActor(token) {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const actorId = decoded.userId || decoded.id || decoded.mentorId;
+
+  if (!actorId) {
+    return null;
+  }
+
+  const isMentorToken = decoded.role === 'mentor' || decoded.userType === 'mentor' || !!decoded.mentorId;
+
+  if (isMentorToken) {
+    const mentor = await Mentor.findById(actorId);
+    if (!mentor) {
+      return null;
+    }
+    return {
+      actor: mentor,
+      actorType: 'mentor'
+    };
+  }
+
+  const user = await User.findById(actorId);
+  if (!user) {
+    return null;
+  }
+
+  return {
+    actor: user,
+    actorType: 'user'
+  };
+}
 
 wss.on('connection', ws => {
   console.log('New WebSocket connection');
@@ -1767,6 +1807,23 @@ wss.on('connection', ws => {
           
         case 'raise_hand':
           await handleRaiseHand(ws, data);
+          break;
+
+        // Whiteboard Collaboration
+        case 'join_whiteboard':
+          await handleJoinWhiteboard(ws, data);
+          break;
+
+        case 'whiteboard_draw':
+          await handleWhiteboardDraw(ws, data);
+          break;
+
+        case 'whiteboard_clear':
+          await handleWhiteboardClear(ws, data);
+          break;
+
+        case 'cursor_move':
+          await handleWhiteboardCursorMove(ws, data);
           break;
           
         // Code Editor Collaboration
@@ -1970,6 +2027,10 @@ wss.on('connection', ws => {
     if (ws.codeSession) {
       handleLeaveCodeSession(ws, { groupName: ws.codeSession });
     }
+
+    if (ws.whiteboardGroup) {
+      handleLeaveWhiteboard(ws, { groupName: ws.whiteboardGroup });
+    }
     
     // Remove from video room clients
     for (let [roomCode, roomClients] of videoRoomClients.entries()) {
@@ -1997,19 +2058,40 @@ wss.on('connection', ws => {
 async function handleVideoRoomAuthentication(ws, data) {
   try {
     const { token, roomCode } = data;
-    
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    ws.userId = decoded.userId;
-    ws.userType = decoded.userType;
-    ws.role = decoded.role;
+
+    const resolved = await resolveSocketActor(token);
+    if (!resolved) {
+      ws.send(JSON.stringify({
+        type: 'authentication_error',
+        message: 'Invalid token'
+      }));
+      return;
+    }
+
+    const { actor, actorType } = resolved;
+    const allowed = hasFeature(actor.subscription || {}, 'video_calls');
+
+    if (!allowed) {
+      ws.send(JSON.stringify({
+        type: 'authentication_error',
+        message: 'Video calls are not available in your current plan',
+        upgradeRequired: true,
+        feature: 'video_calls'
+      }));
+      return;
+    }
+
+    ws.userId = actor._id.toString();
+    ws.userName = actor.fullname || (actorType === 'mentor' ? 'Mentor' : 'User');
+    ws.userType = actorType;
+    ws.role = actorType;
     ws.roomCode = roomCode;
+    ws.videoRoomAuthenticated = true;
     
     ws.send(JSON.stringify({
       type: 'authentication_success',
-      userId: decoded.userId,
-      role: decoded.role
+      userId: ws.userId,
+      role: ws.role
     }));
     
   } catch (error) {
@@ -2025,7 +2107,7 @@ async function handleJoinVideoRoom(ws, data) {
   try {
     const { roomCode } = data;
     
-    if (!ws.userId) {
+    if (!ws.userId || !ws.videoRoomAuthenticated) {
       ws.send(JSON.stringify({
         type: 'error',
         message: 'Authentication required'
@@ -2166,6 +2248,7 @@ async function handleWebRTCSignal(ws, data) {
 async function handleVideoRoomChat(ws, data) {
   try {
     const { roomCode, message, isPrivate, targetUserId } = data;
+    let participantName = ws.userName || 'Participant';
     
     // Save message to database
     const room = await VideoRoom.findOne({ roomCode });
@@ -2173,11 +2256,15 @@ async function handleVideoRoomChat(ws, data) {
       const participant = room.participants.find(p => 
         p.userId.toString() === ws.userId.toString()
       );
+
+      if (participant?.name) {
+        participantName = participant.name;
+      }
       
       if (participant) {
         await room.addChatMessage({
           senderId: ws.userId,
-          senderName: participant.name,
+          senderName: participantName,
           senderType: participant.role,
           message: message,
           isPrivate: isPrivate,
@@ -2197,7 +2284,7 @@ async function handleVideoRoomChat(ws, data) {
             type: 'chat_message',
             message: message,
             senderId: ws.userId,
-            senderName: participant?.name,
+            senderName: participantName,
             isPrivate: true,
             timestamp: new Date()
           }));
@@ -2209,7 +2296,7 @@ async function handleVideoRoomChat(ws, data) {
         type: 'chat_message',
         message: message,
         senderId: ws.userId,
-        senderName: participant?.name,
+        senderName: participantName,
         isPrivate: false,
         timestamp: new Date()
       });
@@ -2280,19 +2367,19 @@ async function handleScreenShare(ws, data) {
 async function handleRecordingUpdate(ws, data) {
   try {
     const { roomCode, isRecording } = data;
-    
-    // Only host can control recording
-    if (ws.role !== 'host') {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Only host can control recording'
-      }));
-      return;
-    }
-    
+
     // Update database
     const room = await VideoRoom.findOne({ roomCode });
     if (room) {
+      const isHost = room.host && room.host.toString() === ws.userId;
+      if (!isHost) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Only host can control recording'
+        }));
+        return;
+      }
+
       room.isRecording = isRecording;
       await room.save();
       
@@ -2328,22 +2415,256 @@ async function handleRaiseHand(ws, data) {
   }
 }
 
+// ============== Whiteboard Collaboration Handlers ==============
+
+async function handleJoinWhiteboard(ws, data) {
+  try {
+    const { groupName, token } = data;
+
+    if (!groupName) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Group name is required' }));
+      return;
+    }
+
+    if (!token) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Authentication token required' }));
+      return;
+    }
+
+    const resolved = await resolveSocketActor(token);
+    if (!resolved) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid token' }));
+      return;
+    }
+
+    const { actor, actorType } = resolved;
+    const userId = actor._id.toString();
+    const userName = actor.fullname || (actorType === 'mentor' ? 'Mentor' : 'User');
+
+    if (!hasFeature(actor.subscription || {}, 'whiteboard')) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        errorType: 'FEATURE_LOCKED',
+        message: 'Whiteboard is not available in your current subscription plan',
+        feature: 'whiteboard',
+        upgradeRequired: true
+      }));
+      return;
+    }
+
+    const group = await Group.findOne({ name: groupName });
+    if (!group) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        errorType: 'GROUP_NOT_FOUND',
+        message: 'Group not found'
+      }));
+      return;
+    }
+
+    const isMember = group.members.some(m => m.userId?.toString() === userId);
+    if (!isMember) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        errorType: 'NOT_A_MEMBER',
+        message: 'You are not a member of this group'
+      }));
+      return;
+    }
+
+    if (!whiteboardSessions.has(groupName)) {
+      whiteboardSessions.set(groupName, {
+        events: [],
+        collaborators: new Map()
+      });
+    }
+
+    const session = whiteboardSessions.get(groupName);
+    session.collaborators.set(ws, {
+      id: userId,
+      name: userName,
+      avatar: actor.avatar || ''
+    });
+
+    ws.whiteboardGroup = groupName;
+    ws.whiteboardUserId = userId;
+    ws.whiteboardUserName = userName;
+
+    const collaborators = Array.from(session.collaborators.values());
+
+    ws.send(JSON.stringify({
+      type: 'whiteboard_joined',
+      groupName,
+      canvasData: session.events,
+      collaborators
+    }));
+
+    broadcastToWhiteboard(groupName, {
+      type: 'collaborator_joined',
+      collaborator: {
+        id: userId,
+        name: userName,
+        avatar: actor.avatar || ''
+      }
+    }, ws);
+
+    broadcastToWhiteboard(groupName, {
+      type: 'collaborators_update',
+      collaborators
+    });
+  } catch (error) {
+    console.error('Error joining whiteboard:', error);
+    ws.send(JSON.stringify({ type: 'error', message: 'Failed to join whiteboard' }));
+  }
+}
+
+async function handleLeaveWhiteboard(ws, data = {}) {
+  try {
+    const groupName = data.groupName || ws.whiteboardGroup;
+    if (!groupName || !whiteboardSessions.has(groupName)) {
+      return;
+    }
+
+    const session = whiteboardSessions.get(groupName);
+    const collaborator = session.collaborators.get(ws);
+    session.collaborators.delete(ws);
+
+    if (collaborator) {
+      broadcastToWhiteboard(groupName, {
+        type: 'collaborator_left',
+        collaboratorId: collaborator.id,
+        collaboratorName: collaborator.name
+      }, ws);
+    }
+
+    if (session.collaborators.size === 0) {
+      whiteboardSessions.delete(groupName);
+    } else {
+      const collaborators = Array.from(session.collaborators.values());
+      broadcastToWhiteboard(groupName, {
+        type: 'collaborators_update',
+        collaborators
+      });
+    }
+
+    delete ws.whiteboardGroup;
+    delete ws.whiteboardUserId;
+    delete ws.whiteboardUserName;
+  } catch (error) {
+    console.error('Error leaving whiteboard:', error);
+  }
+}
+
+async function handleWhiteboardDraw(ws, data) {
+  try {
+    const { groupName, tool, color, width, startX, startY, endX, endY } = data;
+    if (!groupName || !whiteboardSessions.has(groupName) || ws.whiteboardGroup !== groupName) {
+      return;
+    }
+
+    const session = whiteboardSessions.get(groupName);
+    const event = {
+      tool,
+      color,
+      width,
+      startX,
+      startY,
+      endX,
+      endY,
+      senderId: ws.whiteboardUserId,
+      senderName: ws.whiteboardUserName,
+      timestamp: new Date()
+    };
+
+    session.events.push(event);
+    if (session.events.length > 2000) {
+      session.events.shift();
+    }
+
+    broadcastToWhiteboard(groupName, {
+      type: 'whiteboard_draw',
+      ...event
+    }, ws);
+  } catch (error) {
+    console.error('Error processing whiteboard draw:', error);
+  }
+}
+
+async function handleWhiteboardClear(ws, data) {
+  try {
+    const { groupName } = data;
+    if (!groupName || !whiteboardSessions.has(groupName) || ws.whiteboardGroup !== groupName) {
+      return;
+    }
+
+    const session = whiteboardSessions.get(groupName);
+    session.events = [];
+
+    broadcastToWhiteboard(groupName, {
+      type: 'whiteboard_clear',
+      clearedBy: ws.whiteboardUserName,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error clearing whiteboard:', error);
+  }
+}
+
+async function handleWhiteboardCursorMove(ws, data) {
+  try {
+    const { groupName, x, y } = data;
+    if (!groupName || !whiteboardSessions.has(groupName) || ws.whiteboardGroup !== groupName) {
+      return;
+    }
+
+    broadcastToWhiteboard(groupName, {
+      type: 'cursor_move',
+      collaboratorId: ws.whiteboardUserId,
+      collaboratorName: ws.whiteboardUserName,
+      x,
+      y
+    }, ws);
+  } catch (error) {
+    console.error('Error updating whiteboard cursor:', error);
+  }
+}
+
 // ============== Code Editor Collaboration Handlers ==============
 
 // Store for code editor sessions (groupName -> { code, language, collaborators })
-const codeEditorSessions = new Map();
 
 async function handleJoinCodeSession(ws, data) {
   try {
-    const { groupName, userId, userName, userAvatar } = data;
+    const { groupName, token, userAvatar } = data;
     
     if (!groupName) {
       ws.send(JSON.stringify({ type: 'error', message: 'Group name is required' }));
       return;
     }
     
-    if (!userId) {
-      ws.send(JSON.stringify({ type: 'error', message: 'User authentication required' }));
+    if (!token) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Authentication token required' }));
+      return;
+    }
+
+    const resolved = await resolveSocketActor(token);
+    if (!resolved) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid token' }));
+      return;
+    }
+
+    const { actor, actorType } = resolved;
+    const userId = actor._id.toString();
+    const userName = actor.fullname || (actorType === 'mentor' ? 'Mentor' : 'User');
+
+    if (!hasFeature(actor.subscription || {}, 'code_editor')) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        errorType: 'FEATURE_LOCKED',
+        message: 'Code editor is not available in your current subscription plan',
+        feature: 'code_editor',
+        upgradeRequired: true
+      }));
       return;
     }
     
@@ -2631,6 +2952,17 @@ function broadcastToCodeSession(groupName, message, excludeWs = null) {
   if (!session) return;
   
   session.collaborators.forEach((collaborator, clientWs) => {
+    if (clientWs !== excludeWs && clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify(message));
+    }
+  });
+}
+
+function broadcastToWhiteboard(groupName, message, excludeWs = null) {
+  const session = whiteboardSessions.get(groupName);
+  if (!session) return;
+
+  session.collaborators.forEach((_, clientWs) => {
     if (clientWs !== excludeWs && clientWs.readyState === WebSocket.OPEN) {
       clientWs.send(JSON.stringify(message));
     }

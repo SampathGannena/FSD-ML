@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const VideoRoom = require('../models/VideoRoom');
-const authMiddleware = require('../middleware/authMiddleware');
-const mentorAuthMiddleware = require('../middleware/mentorAuthMiddleware');
+const combinedAuthMiddleware = require('../middleware/combinedAuthMiddleware');
+const { requireFeature } = require('../middleware/subscriptionMiddleware');
+
+router.use(combinedAuthMiddleware);
+router.use(requireFeature('video_calls'));
 
 // @route   POST /api/video-rooms/create
 // @desc    Create a new video room
@@ -20,24 +23,8 @@ router.post('/create', async (req, res) => {
       if (!existing) isUnique = true;
     }
 
-    // Determine host type and ID based on token
-    let hostId, hostType;
-    
-    // Try to get user from auth middleware
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    // Try user auth first
-    try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      hostId = decoded.userId || decoded.id;
-      hostType = decoded.role === 'mentor' ? 'Mentor' : 'User';
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
+    const hostId = req.user._id;
+    const hostType = req.userType === 'mentor' ? 'Mentor' : 'User';
 
     const room = new VideoRoom({
       roomCode,
@@ -144,32 +131,9 @@ router.post('/:roomCode/join', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Room is full' });
     }
 
-    // Get user info from token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    let userId, userName, userType;
-    try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId || decoded.id;
-      userType = decoded.role === 'mentor' ? 'Mentor' : 'User';
-      
-      // Get user name
-      if (userType === 'Mentor') {
-        const Mentor = require('../models/Mentor');
-        const mentor = await Mentor.findById(userId);
-        userName = mentor ? mentor.fullname : 'Mentor';
-      } else {
-        const User = require('../models/User');
-        const user = await User.findById(userId);
-        userName = user ? user.fullname : 'User';
-      }
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
+    const userId = req.user._id;
+    const userName = req.user.fullname || (req.userType === 'mentor' ? 'Mentor' : 'User');
+    const userType = req.userType === 'mentor' ? 'Mentor' : 'User';
 
     // Determine role (host or participant)
     const isHost = room.host.toString() === userId.toString();
@@ -228,20 +192,7 @@ router.post('/:roomCode/leave', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
-    // Get user from token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    let userId;
-    try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId || decoded.id;
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
+    const userId = req.user._id;
 
     // Check if user is the host
     const isHost = room.host.toString() === userId.toString();
@@ -281,20 +232,7 @@ router.post('/:roomCode/end', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
-    // Get user from token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    let userId;
-    try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId || decoded.id;
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
+    const userId = req.user._id;
 
     // Only host can end the room
     if (room.host.toString() !== userId.toString()) {
