@@ -32,10 +32,10 @@ body.pricing-page {
 
 .pricing-nav {
     position: fixed;
-    top: 0;
-    left: 0;
-    transform: none;
-    width: 100%;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1180px, calc(100% - 44px));
     max-width: none;
     margin: 0;
     display: flex;
@@ -43,27 +43,40 @@ body.pricing-page {
     align-items: center;
     gap: 20px;
     padding: 12px 32px;
-    border-radius: 0;
-    border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(6, 10, 18, 0.58);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
-    transition: transform 0.35s ease, background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, top 0.35s ease;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+    isolation: isolate;
+    transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, top 0.3s ease, width 0.3s ease;
+}
+
+.pricing-nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08) 55%, rgba(255, 255, 255, 0.2));
+    pointer-events: none;
+    z-index: 0;
+}
+
+.pricing-nav > * {
+    position: relative;
+    z-index: 1;
 }
 
 body.nav-scrolled .pricing-nav {
-    top: 10px;
-    transform: translateX(-50%) scale(0.985);
+    top: 14px;
+    transform: translateX(-50%);
     left: 50%;
     width: min(1180px, calc(100% - 44px));
-    background: rgba(4, 8, 16, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(130deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.22));
+    border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 999px;
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .pricing-brand {
@@ -71,7 +84,7 @@ body.nav-scrolled .pricing-nav {
     align-items: center;
     gap: 12px;
     text-decoration: none;
-    color: #ffffff;
+    color: #111827;
     font-weight: 800;
     font-size: 1.1rem;
 }
@@ -90,20 +103,24 @@ body.nav-scrolled .pricing-nav {
 }
 
 .pricing-nav-links a {
-    color: rgba(255, 255, 255, 0.82);
+    color: #374151;
     text-decoration: none;
     font-weight: 600;
+    border-radius: 10px;
+    padding: 8px 10px;
+    transition: color 0.22s ease, background 0.22s ease;
 }
 
 .pricing-nav-links a:hover {
-    color: #ff9d49;
+    color: #ff4b2b;
+    background: rgba(255, 255, 255, 0.46);
 }
 
 .pricing-nav-links .nav-cta {
     padding: 10px 18px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 157, 73, 0.6);
-    background: rgba(255, 107, 0, 0.15);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 107, 0, 0.45);
+    background: rgba(255, 107, 0, 0.12);
 }
 
 .pricing-hero-content {
@@ -196,12 +213,36 @@ body.nav-scrolled .pricing-nav {
 
 @media (max-width: 900px) {
     .pricing-nav {
-        flex-direction: column;
-        align-items: flex-start;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .pricing-nav-links {
         flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pricing-nav {
+        top: 8px;
+        left: 50%;
+        width: calc(100% - 20px);
+        max-width: calc(100% - 20px);
+        transform: translateX(-50%);
+        border-radius: 999px;
+        padding: 10px 14px;
+    }
+
+    body.nav-scrolled .pricing-nav {
+        top: 8px;
+        left: 50%;
+        width: calc(100% - 20px);
+        max-width: calc(100% - 20px);
+        transform: translateX(-50%);
+        border-radius: 999px;
     }
 }
 
