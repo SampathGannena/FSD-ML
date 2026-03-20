@@ -4,7 +4,12 @@ Backend/node_modules/
 
 # Environment variables
 .env
+.env.*
 Backend/.env
+Frontend/.env.local
+Backend/.env.local
+!/.env.example
+!**/.env.example
 
 # Logs
 *.log
