@@ -6,10 +6,9 @@ services:
     plan: starter
     buildCommand: |
       cd Backend
-      npm install
+      npm ci --omit=dev --no-audit --prefer-offline
       cd ml
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      pip install --no-cache-dir -r requirements-render.txt
       cd ../..
     startCommand: cd Backend && node server.js
     healthCheckPath: /health
@@ -18,10 +17,10 @@ services:
         value: production
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: MONGO_URI
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: PORT
-        value: 3000
     autoDeploy: true

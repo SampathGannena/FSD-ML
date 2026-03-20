@@ -8,6 +8,7 @@ import json
 import argparse
 import logging
 from pathlib import Path
+from typing import Any
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -20,6 +21,7 @@ from data.graph_builder import GraphBuilder, build_graph_from_db
 # MongoDB connection
 try:
     from pymongo import MongoClient
+    from bson import ObjectId
     import os
     from dotenv import load_dotenv
     
@@ -28,6 +30,7 @@ try:
 except ImportError:
     MONGO_AVAILABLE = False
     MongoClient = None  # type: ignore
+    ObjectId = None  # type: ignore
     os = None  # type: ignore
 
 # Setup logging
@@ -59,7 +62,12 @@ class RecommendationAPI:
                 self.db = None
                 return
                 
-            mongo_uri = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/fsd_ml')  # type: ignore
+            # Support both naming conventions used across this project.
+            mongo_uri = (
+                os.getenv('MONGODB_URI')  # type: ignore
+                or os.getenv('MONGO_URI')  # type: ignore
+                or 'mongodb://localhost:27017/fsd_ml'
+            )
             client = MongoClient(mongo_uri)  # type: ignore
             self.db = client.get_database()
             
@@ -77,6 +85,22 @@ class RecommendationAPI:
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             self.db = None
+
+    def _normalize_mongo_id(self, raw_id: Any):
+        """Best-effort conversion of incoming IDs to ObjectId when valid."""
+        if raw_id is None:
+            return None
+        if ObjectId is None:
+            return raw_id
+        try:
+            # Keep already-converted values unchanged.
+            if isinstance(raw_id, ObjectId):
+                return raw_id
+            if ObjectId.is_valid(str(raw_id)):
+                return ObjectId(str(raw_id))
+        except Exception:
+            pass
+        return raw_id
     
     def initialize(self, params):
         """Initialize the recommendation system"""
@@ -124,14 +148,16 @@ class RecommendationAPI:
         
         try:
             # Fetch user data
-            user_doc = self.collections['users'].find_one({'_id': user_id})
+            user_doc = self.collections['users'].find_one({'_id': self._normalize_mongo_id(user_id)})
             if not user_doc:
                 return {"status": "error", "message": "User not found"}
             
             user_features = extract_user_features(user_doc)
             
             # Fetch user's goals for enrichment
-            goals = list(self.collections['goals'].find({'menteeId': user_id}))
+            goals = list(self.collections['goals'].find({'menteeId': self._normalize_mongo_id(user_id)}))
+            if not goals:
+                goals = list(self.collections['goals'].find({'menteeId': str(user_id)}))
             if goals:
                 from data.user_features import enrich_user_features_with_goals
                 user_features = enrich_user_features_with_goals(user_features, goals)
@@ -173,7 +199,7 @@ class RecommendationAPI:
         top_k = params.get('top_k', 10)
         
         try:
-            user_doc = self.collections['users'].find_one({'_id': user_id})
+            user_doc = self.collections['users'].find_one({'_id': self._normalize_mongo_id(user_id)})
             if not user_doc:
                 return {"status": "error", "message": "User not found"}
             
@@ -222,7 +248,7 @@ class RecommendationAPI:
         top_k = params.get('top_k', 10)
         
         try:
-            user_doc = self.collections['users'].find_one({'_id': user_id})
+            user_doc = self.collections['users'].find_one({'_id': self._normalize_mongo_id(user_id)})
             if not user_doc:
                 return {"status": "error", "message": "User not found"}
             

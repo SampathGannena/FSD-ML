@@ -22,14 +22,12 @@ PYTHON_VERSION=3.11.0
 In **Settings** → **Build Command**, update to:
 
 ```bash
-cd Backend && npm install && cd ml && pip install -r requirements.txt && cd ..
+cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
 ```
 
-Or if you want a virtual environment (recommended):
+Use this for Render web services. Do not create a virtual environment in the build command (it adds extra time and is not needed on Render).
 
-```bash
-cd Backend && npm install && cd ml && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && cd ..
-```
+`requirements-render.txt` intentionally skips heavy GPU dependencies so deploys are faster.
 
 #### C. Start Command (should remain):
 
@@ -51,11 +49,13 @@ services:
   - type: web
     name: fsd-ml-backend
     env: node
-    buildCommand: cd Backend && npm install && cd ml && pip install -r requirements.txt && cd ..
+    buildCommand: cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
     startCommand: cd Backend && node server.js
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: MONGO_URI
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -122,10 +122,9 @@ services:
     plan: starter
     buildCommand: |
       cd Backend
-      npm install
+      npm ci --omit=dev --no-audit --prefer-offline
       cd ml
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      pip install --no-cache-dir -r requirements-render.txt
       cd ../..
     startCommand: cd Backend && node server.js
     healthCheckPath: /health
@@ -134,6 +133,8 @@ services:
         value: production
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: MONGO_URI
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -149,7 +150,8 @@ Make sure these are set in Render Dashboard → Environment:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `MONGODB_URI` | Your MongoDB Atlas URI | Required |
+| `MONGO_URI` | Your MongoDB Atlas URI | Required (Node backend) |
+| `MONGODB_URI` | Same MongoDB URI | Recommended (Python recommender) |
 | `JWT_SECRET` | Your secret key | Required |
 | `PYTHON_VERSION` | `3.11.0` | For Python support |
 | `NODE_ENV` | `production` | For production mode |
@@ -267,7 +269,7 @@ python-3.11.0
 
 **Solution:** Verify build command installed packages:
 ```bash
-cd Backend && npm install && cd ml && pip install -r requirements.txt && cd ..
+cd Backend && npm ci --omit=dev --no-audit --prefer-offline && cd ml && pip install --no-cache-dir -r requirements-render.txt && cd ..
 ```
 
 ### Recommendations return empty
@@ -291,7 +293,7 @@ Before deploying:
 - [ ] `server.js` has recommendation routes integrated
 - [ ] `requirements.txt` exists in `Backend/ml/`
 - [ ] MongoDB URI is set in Render environment variables
-- [ ] Build command includes `pip install -r requirements.txt`
+- [ ] Build command includes `pip install --no-cache-dir -r requirements-render.txt`
 - [ ] Python version is set to 3.11.0
 - [ ] Code is committed and pushed to GitHub
 - [ ] Render is connected to your GitHub repo
