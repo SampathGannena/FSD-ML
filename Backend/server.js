@@ -25,7 +25,7 @@ const Message = require('./models/Message');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const File = require('./models/File'); // This saves files to the 'uploads' folder
-const { PeerServer } = require('peer');
+const { ExpressPeerServer } = require('peer');
 const securityConfig = require('./config/security');
 
 dotenv.config();
@@ -2046,7 +2046,12 @@ app.use((err, req, res, next) => {
 });
 
 // 404 handler for undefined routes
-app.use((req, res) => {
+app.use((req, res, next) => {
+  // Let PeerJS middleware (mounted later) handle /peerjs requests.
+  if (req.path && req.path.startsWith('/peerjs')) {
+    return next();
+  }
+
   console.log('404 - Route not found:', req.url);
   res.status(404).send('Route not found');
 });
@@ -2071,16 +2076,17 @@ process.on('unhandledRejection', (error) => {
   console.error('Unhandled Rejection:', error);
 });
 
-// Configure PeerJS Server to use the existing HTTP server
+// Configure PeerJS middleware on the existing HTTP server
 try {
-  const peerServer = PeerServer({
-    server: server, // Use the existing HTTP server
-    path: '/peerjs',
+  const peerServer = ExpressPeerServer(server, {
+    path: '/',
     corsOptions: {
       origin: '*',
       methods: ['GET', 'POST'],
     }
   });
+
+  app.use('/peerjs', peerServer);
   console.log(`PeerJS server running on port ${PORT} at path /peerjs`);
 } catch (error) {
   console.error('PeerJS initialization error:', error);
