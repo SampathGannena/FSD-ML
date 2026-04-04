@@ -559,7 +559,7 @@
     <button id="learner-bot-launcher" class="learner-bot-launcher" type="button" aria-label="Open LearnerBot" aria-expanded="false" onclick="toggleLearnerBot()">
       <span class="launcher-rings"></span>
       <span class="launcher-face">
-        <i class="fas fa-robot" aria-hidden="true"></i>
+        <span class="minion-glyph" aria-hidden="true">🥽</span>
       </span>
       <span class="launcher-dot"></span>
     </button>
@@ -567,7 +567,7 @@
     <div id="learner-bot-card" class="learner-bot-card" style="display: none;" aria-hidden="true">
       <div class="learner-chat-header">
         <div class="learner-title-wrap">
-          <span class="learner-title-icon"><i class="fas fa-brain"></i></span>
+          <span class="learner-title-icon"><span class="minion-glyph" aria-hidden="true">🥽</span></span>
           <div>
             <div class="learner-title-text">LearnerBot</div>
             <div class="learner-status" id="learner-status">Online now</div>
@@ -586,24 +586,33 @@
           <button class="learner-header-btn" type="button" aria-label="Export as PDF" onclick="exportLearnerChat('pdf')" title="Export PDF">
             <i class="fas fa-file-pdf"></i>
           </button>
-          <button class="learner-header-btn" type="button" aria-label="New chat thread" onclick="createLearnerThread()" title="New Chat">
-            <i class="fas fa-plus"></i>
-          </button>
           <button class="learner-close-btn" type="button" aria-label="Close LearnerBot" onclick="toggleLearnerBot(false)">
             <i class="fas fa-times"></i>
           </button>
         </div>
       </div>
-      <div class="learner-thread-bar">
-        <select id="learner-thread-select" class="learner-thread-select" onchange="switchLearnerThread(this.value)"></select>
-      </div>
-      <div class="learner-summary-note" id="learner-summary-note" style="display: none;"></div>
-      <div class="learner-chat-body" id="chat-body">
-        <div class="learner-message bot">Hi there! I'm LearnerBot. Ask me anything about your study groups or learning resources!</div>
-      </div>
-      <div class="learner-chat-input">
-        <input type="text" id="user-input" placeholder="Type your message..." onkeydown="handleLearnerInput(event)" />
-        <button type="button" onclick="sendMessage()">Send</button>
+      <div class="learner-thread-layout">
+        <aside class="learner-thread-sidebar" aria-label="Thread history">
+          <div class="learner-thread-head">
+            <span>Thread history</span>
+            <button class="learner-thread-new-btn" type="button" onclick="createLearnerThread()" title="Create new thread" aria-label="Create new thread">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+          <div id="learner-thread-list" class="learner-thread-list"></div>
+        </aside>
+
+        <div class="learner-thread-main">
+          <div class="learner-summary-note" id="learner-summary-note" style="display: none;"></div>
+          <div class="learner-chat-body" id="chat-body">
+            <div class="learner-message bot">Hi there! I'm LearnerBot. Ask me anything about your study groups or learning resources!</div>
+          </div>
+          <div class="learner-chat-input">
+            <input type="text" id="user-input" placeholder="Type your message..." onkeydown="handleLearnerInput(event)" />
+            <button type="button" class="draft-doubt-btn" onclick="draftDoubtFromLearnerBot()" title="Draft a doubt from your latest message">Draft Doubt</button>
+            <button type="button" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -623,6 +632,7 @@
     let activeLearnerThreadId = localStorage.getItem('learnerbot_active_thread_id') || '';
     let learnerIsSending = false;
     let learnerThreadsLoaded = false;
+    let learnerAwaitingDoubtTopic = false;
 
     function getAuthToken() {
       return localStorage.getItem("token");
@@ -643,12 +653,206 @@
         .filter(item => item.content);
     }
 
-    function getThreadSelect() {
-      return document.getElementById('learner-thread-select');
+    function getThreadList() {
+      return document.getElementById('learner-thread-list');
     }
 
     function getSummaryNote() {
       return document.getElementById('learner-summary-note');
+    }
+
+    function getThreadLabel(thread) {
+      const title = (thread && thread.title ? String(thread.title) : '').trim();
+      return title || 'New Chat';
+    }
+
+    function getThreadMeta(thread) {
+      const stamp = thread && (thread.lastActiveAt || thread.updatedAt || thread.createdAt);
+      if (!stamp) {
+        return 'No activity yet';
+      }
+
+      const parsed = new Date(stamp);
+      if (Number.isNaN(parsed.getTime())) {
+        return 'Recent';
+      }
+
+      return parsed.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
+
+    function escapeLearnerHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sortLearnerThreads() {
+      learnerThreads.sort((a, b) => {
+        const aTime = new Date(a.lastActiveAt || a.updatedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.lastActiveAt || b.updatedAt || b.createdAt || 0).getTime();
+        return bTime - aTime;
+      });
+    }
+
+    function upsertThread(thread) {
+      if (!thread || !thread.threadId) {
+        return;
+      }
+
+      const index = learnerThreads.findIndex(item => item.threadId === thread.threadId);
+      if (index >= 0) {
+        learnerThreads[index] = {
+          ...learnerThreads[index],
+          ...thread,
+          title: getThreadLabel(thread)
+        };
+      } else {
+        learnerThreads.push({
+          ...thread,
+          title: getThreadLabel(thread)
+        });
+      }
+
+      sortLearnerThreads();
+      renderThreadOptions();
+    }
+
+    function renderThreadOptions() {
+      const threadList = getThreadList();
+      if (!threadList) {
+        return;
+      }
+
+      if (!learnerThreads.length) {
+        threadList.innerHTML = '<div class="learner-thread-empty">No chat threads yet</div>';
+        return;
+      }
+
+      sortLearnerThreads();
+      threadList.innerHTML = learnerThreads.map(thread => {
+        const isActive = thread.threadId === activeLearnerThreadId;
+        const activeClass = isActive ? ' is-active' : '';
+        const safeThreadId = escapeLearnerHtml(String(thread.threadId || ''));
+        const safeTitle = escapeLearnerHtml(getThreadLabel(thread));
+        const meta = escapeLearnerHtml(getThreadMeta(thread));
+
+        return `
+          <div class="learner-thread-item${activeClass}" onclick="switchLearnerThread('${safeThreadId}')">
+            <div class="learner-thread-text">
+              <div class="learner-thread-title">${safeTitle}</div>
+              <div class="learner-thread-meta">${meta}</div>
+            </div>
+            <div class="learner-thread-actions">
+              <button type="button" class="learner-thread-action" title="Rename thread" aria-label="Rename thread" onclick="event.stopPropagation(); renameLearnerThread('${safeThreadId}')">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button type="button" class="learner-thread-action danger" title="Delete thread" aria-label="Delete thread" onclick="event.stopPropagation(); deleteLearnerThread('${safeThreadId}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function renameLearnerThread(threadId) {
+      const existing = learnerThreads.find(item => item.threadId === threadId);
+      if (!existing) {
+        return;
+      }
+
+      const requestedTitle = window.prompt('Rename this chat thread:', getThreadLabel(existing));
+      if (requestedTitle === null) {
+        return;
+      }
+
+      const title = requestedTitle.trim();
+      if (!title) {
+        return;
+      }
+
+      const token = getAuthToken();
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/threads/${encodeURIComponent(threadId)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ title })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to rename thread');
+        }
+
+        upsertThread(data.thread);
+      } catch (error) {
+        console.error('Unable to rename LearnerBot thread:', error);
+      }
+    }
+
+    async function deleteLearnerThread(threadId) {
+      if (!threadId) {
+        return;
+      }
+
+      const shouldDelete = window.confirm('Delete this LearnerBot thread permanently?');
+      if (!shouldDelete) {
+        return;
+      }
+
+      const token = getAuthToken();
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/threads/${encodeURIComponent(threadId)}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to delete thread');
+        }
+
+        learnerThreads = learnerThreads.filter(item => item.threadId !== threadId);
+
+        if (activeLearnerThreadId === threadId) {
+          if (learnerThreads.length) {
+            activeLearnerThreadId = learnerThreads[0].threadId;
+            localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+            await loadLearnerThreadHistory(activeLearnerThreadId);
+          } else {
+            activeLearnerThreadId = '';
+            localStorage.removeItem('learnerbot_active_thread_id');
+            learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+            updateSummaryNote('');
+            renderLearnerConversation();
+          }
+        }
+
+        renderThreadOptions();
+      } catch (error) {
+        console.error('Unable to delete LearnerBot thread:', error);
+      }
     }
 
     function updateSummaryNote(summary) {
@@ -1076,6 +1280,150 @@
       }
     }
 
+    function isDraftDoubtIntent(text) {
+      const value = String(text || '').toLowerCase().trim();
+      if (!value) {
+        return false;
+      }
+
+      return (
+        value.includes('draft doubt') ||
+        value.includes('create doubt') ||
+        value.includes('make doubt') ||
+        value.includes('open doubt form') ||
+        value.includes('raise doubt') ||
+        value.includes('frame a doubt') ||
+        value.includes('prepare doubt') ||
+        value.includes('convert this to doubt') ||
+        value.includes('ask doubt')
+      );
+    }
+
+    function extractDraftDoubtTopic(text) {
+      let value = String(text || '').trim();
+      if (!value) {
+        return '';
+      }
+
+      const patterns = [
+        /^(please\s+)?(can you\s+)?(draft|create|make|prepare|frame|raise)\s+(a\s+)?doubt\s*(for|about|on)?\s*/i,
+        /^(please\s+)?(open\s+)?doubt\s+form\s*(for|about|on)?\s*/i,
+        /^(please\s+)?convert\s+this\s+to\s+(a\s+)?doubt\s*/i,
+        /^(please\s+)?ask\s+(a\s+)?doubt\s*(for|about|on)?\s*/i
+      ];
+
+      patterns.forEach(pattern => {
+        value = value.replace(pattern, '');
+      });
+
+      value = value.replace(/^(this|it|that|topic)\s*/i, '').trim();
+      value = value.replace(/[.!?]+$/g, '').trim();
+
+      return value;
+    }
+
+    function isTooGenericDoubtTopic(topic) {
+      const value = String(topic || '').trim().toLowerCase();
+      if (!value || value.length < 8) {
+        return true;
+      }
+
+      return /^(this|that|it|topic|same|above|doubt)$/.test(value);
+    }
+
+    function buildClientDoubtDraft(text) {
+      const raw = String(text || '').trim();
+      const normalized = raw.toLowerCase();
+
+      let category = 'other';
+      if (/bug|error|exception|api|code|node|react|javascript|python|sql/.test(normalized)) {
+        category = 'technical';
+      } else if (/understand|concept|theory|why|how does/.test(normalized)) {
+        category = 'conceptual';
+      } else if (/project|architecture|design|deploy|deployment|integrat/.test(normalized)) {
+        category = 'project';
+      } else if (/career|interview|resume|job|internship/.test(normalized)) {
+        category = 'career';
+      }
+
+      let priority = 'medium';
+      if (/urgent|asap|immediately|critical|prod/.test(normalized)) {
+        priority = 'urgent';
+      } else if (/important|blocked|stuck|deadline|failing/.test(normalized)) {
+        priority = 'high';
+      } else if (/minor|later|whenever/.test(normalized)) {
+        priority = 'low';
+      }
+
+      const subject = raw.slice(0, 80).trim() || 'Need help with my learning issue';
+      return {
+        category,
+        priority,
+        subject,
+        question: raw || 'Please help me with this issue.'
+      };
+    }
+
+    function getLatestUserLearnerMessage() {
+      const latestUserMessage = [...learnerConversation].reverse().find(item => item.role === 'user' && item.content);
+      if (latestUserMessage && latestUserMessage.content) {
+        return latestUserMessage.content;
+      }
+
+      const input = document.getElementById('user-input');
+      return input && input.value ? input.value.trim() : '';
+    }
+
+    function applyDoubtDraftToForm(draft) {
+      showAskDoubtModal();
+
+      document.getElementById('doubt-category').value = draft.category || 'other';
+      document.getElementById('doubt-title').value = draft.subject || '';
+      document.getElementById('doubt-description').value = draft.question || '';
+      document.getElementById('doubt-priority').value = draft.priority || 'medium';
+
+      switchCollabTab('doubts');
+    }
+
+    async function draftDoubtFromLearnerBot(sourceOverride = '') {
+      const token = getAuthToken();
+      const sourceText = String(sourceOverride || getLatestUserLearnerMessage()).trim();
+
+      if (!sourceText) {
+        alert('Please type a message first so LearnerBot can draft your doubt.');
+        return;
+      }
+
+      if (!token) {
+        applyDoubtDraftToForm(buildClientDoubtDraft(sourceText));
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/draft-doubt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            text: sourceText,
+            threadId: activeLearnerThreadId || undefined
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.draft) {
+          throw new Error(data.error || 'Failed to draft doubt');
+        }
+
+        applyDoubtDraftToForm(data.draft);
+      } catch (error) {
+        console.error('Unable to draft doubt from LearnerBot:', error);
+        applyDoubtDraftToForm(buildClientDoubtDraft(sourceText));
+      }
+    }
+
     async function sendMessage() {
       const input = document.getElementById('user-input');
       const launcher = document.getElementById('learner-bot-launcher');
@@ -1085,6 +1433,38 @@
 
       const userText = input.value.trim();
       if (!userText) return;
+
+      if (learnerAwaitingDoubtTopic) {
+        appendLearnerMessage(userText, 'user');
+        input.value = '';
+
+        if (/^(cancel|stop|never mind|forget it)$/i.test(userText)) {
+          learnerAwaitingDoubtTopic = false;
+          appendLearnerMessage('Okay, cancelled doubt drafting. You can ask again any time.', 'bot');
+          return;
+        }
+
+        learnerAwaitingDoubtTopic = false;
+        await draftDoubtFromLearnerBot(userText);
+        appendLearnerMessage('I drafted a doubt from your topic and opened the form. Review and submit when ready.', 'bot');
+        return;
+      }
+
+      if (isDraftDoubtIntent(userText)) {
+        appendLearnerMessage(userText, 'user');
+        input.value = '';
+
+        const topic = extractDraftDoubtTopic(userText);
+        if (isTooGenericDoubtTopic(topic)) {
+          learnerAwaitingDoubtTopic = true;
+          appendLearnerMessage('Sure. Share the exact topic or issue in one line, and I will draft the doubt instantly.', 'bot');
+          return;
+        }
+
+        await draftDoubtFromLearnerBot(topic);
+        appendLearnerMessage('Done. I opened a drafted doubt for this topic. Please review and submit.', 'bot');
+        return;
+      }
 
       learnerIsSending = true;
       appendLearnerMessage(userText, 'user');

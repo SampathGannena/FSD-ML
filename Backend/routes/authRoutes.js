@@ -622,6 +622,156 @@ function formatCategory(value) {
     .replace(/\b\w/g, ch => ch.toUpperCase());
 }
 
+function buildFallbackDoubtDraft(text) {
+  const raw = String(text || '').trim();
+  const normalized = raw.toLowerCase();
+
+  let category = 'other';
+  if (/bug|error|exception|api|code|node|react|javascript|python|sql/.test(normalized)) {
+    category = 'technical';
+  } else if (/understand|concept|theory|why|how does/.test(normalized)) {
+    category = 'conceptual';
+  } else if (/project|architecture|design|deploy|deployment|integrat/.test(normalized)) {
+    category = 'project';
+  } else if (/career|interview|resume|job|internship/.test(normalized)) {
+    category = 'career';
+  }
+
+  let priority = 'medium';
+  if (/urgent|asap|immediately|production down|critical/.test(normalized)) {
+    priority = 'urgent';
+  } else if (/important|blocked|stuck|deadline|failing/.test(normalized)) {
+    priority = 'high';
+  } else if (/minor|whenever|low priority|later/.test(normalized)) {
+    priority = 'low';
+  }
+
+  const subject = raw
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+    .trim() || 'Need help with a learning issue';
+
+  return {
+    category,
+    subject,
+    question: raw || 'Please help me understand and resolve this issue.',
+    priority
+  };
+}
+
+router.post('/doubts/submit', authMiddleware, async (req, res) => {
+  try {
+    const Doubt = require('../models/Doubt');
+    const Mentor = require('../models/Mentor');
+
+    const mentorId = req.body?.mentorId || null;
+    const category = String(req.body?.category || '').trim().toLowerCase();
+    const subject = String(req.body?.subject || '').trim();
+    const question = String(req.body?.question || '').trim();
+    const priority = String(req.body?.priority || 'medium').trim().toLowerCase();
+
+    if (!category || !subject || !question) {
+      return res.status(400).json({
+        success: false,
+        error: 'Category, subject, and question are required'
+      });
+    }
+
+    const allowedCategories = ['technical', 'conceptual', 'project', 'career', 'other'];
+    const allowedPriorities = ['low', 'medium', 'high', 'urgent'];
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({ success: false, error: 'Invalid category value' });
+    }
+
+    if (!allowedPriorities.includes(priority)) {
+      return res.status(400).json({ success: false, error: 'Invalid priority value' });
+    }
+
+    let mentorName = '';
+    let resolvedMentorId = null;
+    if (mentorId) {
+      const mentor = await Mentor.findById(mentorId).select('fullname name email');
+      if (!mentor) {
+        return res.status(404).json({ success: false, error: 'Selected mentor not found' });
+      }
+      resolvedMentorId = mentor._id;
+      mentorName = mentor.fullname || mentor.name || mentor.email || '';
+    }
+
+    const doubt = await Doubt.create({
+      studentId: req.user._id,
+      studentName: req.user.fullname || req.user.name || 'Learner',
+      studentEmail: req.user.email || '',
+      mentorId: resolvedMentorId,
+      mentorName,
+      category,
+      subject,
+      question,
+      priority,
+      status: 'open',
+      isPublic: true
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Doubt submitted successfully',
+      doubt
+    });
+  } catch (error) {
+    console.error('Error submitting learner doubt:', error);
+    return res.status(500).json({ success: false, error: 'Failed to submit doubt' });
+  }
+});
+
+router.get('/doubts', authMiddleware, async (req, res) => {
+  try {
+    const Doubt = require('../models/Doubt');
+
+    const doubts = await Doubt.find({ studentId: req.user._id })
+      .sort({ createdAt: -1 })
+      .select('mentorId mentorName category subject question priority status comments createdAt updatedAt');
+
+    const normalized = doubts.map(item => ({
+      _id: item._id,
+      mentorId: item.mentorId,
+      mentorName: item.mentorName || '',
+      category: item.category,
+      subject: item.subject,
+      question: item.question,
+      priority: item.priority,
+      status: item.status,
+      answers: Array.isArray(item.comments) ? item.comments.length : 0,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
+
+    return res.json({
+      success: true,
+      doubts: normalized,
+      count: normalized.length
+    });
+  } catch (error) {
+    console.error('Error fetching learner doubts:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch doubts' });
+  }
+});
+
+router.post('/ai-chat/draft-doubt', authMiddleware, async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim();
+    if (!text) {
+      return res.status(400).json({ success: false, error: 'Text is required to draft a doubt' });
+    }
+
+    const draft = buildFallbackDoubtDraft(text);
+    return res.json({ success: true, draft });
+  } catch (error) {
+    console.error('AI draft doubt error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to draft doubt' });
+  }
+});
+
 // AI chat endpoints for LearnerBot
 const DEFAULT_LEARNER_GREETING = "Hi there! I'm LearnerBot. Ask me anything about your study groups or learning resources!";
 
@@ -671,6 +821,64 @@ router.post('/ai-chat/threads', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('AI create thread error:', error);
     return res.status(500).json({ success: false, error: 'Failed to create chat thread' });
+  }
+});
+
+router.patch('/ai-chat/threads/:threadId', authMiddleware, async (req, res) => {
+  try {
+    const threadId = String(req.params?.threadId || '').trim();
+    const title = sanitizeThreadTitle(req.body?.title);
+
+    if (!threadId) {
+      return res.status(400).json({ success: false, error: 'Thread ID is required' });
+    }
+
+    const conversation = await Conversation.findOneAndUpdate(
+      { userId: req.user._id, threadId, channel: 'learnerbot' },
+      { $set: { title, lastActiveAt: new Date() } },
+      { new: true }
+    );
+
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Thread not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Thread renamed successfully',
+      thread: serializeThread(conversation)
+    });
+  } catch (error) {
+    console.error('AI rename thread error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to rename thread' });
+  }
+});
+
+router.delete('/ai-chat/threads/:threadId', authMiddleware, async (req, res) => {
+  try {
+    const threadId = String(req.params?.threadId || '').trim();
+    if (!threadId) {
+      return res.status(400).json({ success: false, error: 'Thread ID is required' });
+    }
+
+    const deleted = await Conversation.findOneAndDelete({
+      userId: req.user._id,
+      threadId,
+      channel: 'learnerbot'
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Thread not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Thread deleted successfully',
+      threadId
+    });
+  } catch (error) {
+    console.error('AI delete thread error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to delete thread' });
   }
 });
 
