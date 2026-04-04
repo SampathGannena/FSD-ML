@@ -626,8 +626,8 @@
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    background: radial-gradient(circle at 30% 25%, #ffe4c2, #ff7a18 55%, #d84a00 100%);
-    box-shadow: 0 14px 28px rgba(255, 107, 0, 0.45), 0 0 0 6px rgba(255, 107, 0, 0.12);
+    background: radial-gradient(circle at 30% 25%, #fff6c2, #ffd43b 58%, #e6b400 100%);
+    box-shadow: 0 14px 28px rgba(230, 180, 0, 0.42), 0 0 0 6px rgba(230, 180, 0, 0.14);
     display: grid;
     place-items: center;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -636,11 +636,18 @@
 
   .learner-bot-launcher:hover {
     transform: translateY(-3px) scale(1.04);
-    box-shadow: 0 18px 32px rgba(255, 107, 0, 0.5), 0 0 0 8px rgba(255, 107, 0, 0.14);
+    box-shadow: 0 18px 32px rgba(230, 180, 0, 0.5), 0 0 0 8px rgba(230, 180, 0, 0.16);
   }
 
-  .learner-bot-launcher.is-thinking .launcher-face i {
+  .learner-bot-launcher.is-thinking .launcher-face .minion-glyph {
     animation: learnerThink 0.9s ease-in-out infinite;
+  }
+
+  .minion-glyph {
+    display: inline-block;
+    line-height: 1;
+    font-size: 1.28rem;
+    transform: translateY(1px);
   }
 
   .learner-bot-launcher.has-unread::after {
@@ -652,12 +659,6 @@
     height: 14px;
     border-radius: 50%;
     background: #00d26a;
-  .minion-glyph {
-    display: inline-block;
-    line-height: 1;
-    font-size: 1.28rem;
-    transform: translateY(1px);
-  }
     border: 2px solid #fff;
     box-shadow: 0 0 0 0 rgba(0, 210, 106, 0.7);
     animation: learnerUnreadPing 1.5s infinite;
@@ -668,8 +669,8 @@
     width: 46px;
     height: 46px;
     border-radius: 50%;
-    background: rgba(16, 24, 40, 0.9);
-    color: #ffe8d3;
+    background: radial-gradient(circle at 35% 25%, #fff9d2, #ffd94b 70%, #e0b402 100%);
+    color: #30343f;
     display: grid;
     place-items: center;
     font-size: 1.35rem;
@@ -716,7 +717,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 14px;
-    background: linear-gradient(110deg, #ff8a2f, #ff5f2b 60%, #ff3f6f);
+    background: linear-gradient(110deg, #ffe36e, #ffd43b 58%, #76b7e5);
     color: #fff;
   }
 
@@ -773,7 +774,12 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 217, 75, 0.34);
+  }
+
+  .learner-title-icon .minion-glyph {
+    font-size: 0.96rem;
+    transform: translateY(0);
   }
 
   .learner-chat-body {
@@ -818,10 +824,6 @@
     height: 22px;
     border: 1px solid rgba(255, 145, 41, 0.36);
     background: rgba(255, 145, 41, 0.18);
-  .learner-title-icon .minion-glyph {
-    font-size: 0.96rem;
-    transform: translateY(0);
-  }
     color: #fff;
     border-radius: 7px;
     cursor: pointer;

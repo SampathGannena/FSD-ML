@@ -6,6 +6,7 @@ const { forgotPassword } = require('../controllers/authController');
 const {resetPassword} = require('../controllers/authController')
 const authMiddleware = require('../middleware/authMiddleware');
 const Conversation = require('../models/Conversation');
+const LearnerActivity = require('../models/LearnerActivity');
 // const multer = require('multer');
 // const upload = multer({ dest: 'uploads/' });
 
@@ -944,6 +945,37 @@ router.get('/ai-chat/export', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/ai-chat/timeline', authMiddleware, async (req, res) => {
+  try {
+    const requestedLimit = Number(req.query?.limit || 20);
+    const limit = Math.min(100, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 20));
+    const eventType = String(req.query?.eventType || '').trim();
+
+    const query = { userId: req.user._id };
+    if (eventType) {
+      query.eventType = eventType;
+    }
+
+    const events = await LearnerActivity.find(query)
+      .select('eventType title details sourceType sourceId occurredAt metadata createdAt updatedAt')
+      .sort({ occurredAt: -1, updatedAt: -1 })
+      .limit(limit);
+
+    return res.json({
+      success: true,
+      count: events.length,
+      limit,
+      filters: {
+        eventType: eventType || null
+      },
+      events
+    });
+  } catch (error) {
+    console.error('AI timeline debug error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to load learner timeline' });
+  }
+});
+
 router.post('/ai-chat', authMiddleware, async (req, res) => {
   try {
     const message = String(req.body?.message || '').trim();
@@ -954,9 +986,12 @@ router.post('/ai-chat', authMiddleware, async (req, res) => {
     }
 
     const conversation = await getOrCreateConversation(req.user._id, threadId);
+    await syncLearnerActivityTimeline(req.user._id);
+    const assistantContext = await getLearnerAssistantContext(req.user._id);
     const userProfile = {
       name: req.user?.fullname || 'Learner',
-      email: req.user?.email || ''
+      email: req.user?.email || '',
+      assistantContext
     };
 
     if (!conversation.title || conversation.title === 'New Chat') {
@@ -1126,15 +1161,240 @@ function appendConversationMessage(conversation, role, content) {
   });
 }
 
+function compactText(text, max = 120) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+async function upsertLearnerActivity(userId, event) {
+  if (!event || !event.eventKey || !event.title) {
+    return;
+  }
+
+  await LearnerActivity.findOneAndUpdate(
+    { userId, eventKey: event.eventKey },
+    {
+      $set: {
+        eventType: event.eventType || 'activity',
+        title: compactText(event.title, 180),
+        details: compactText(event.details || '', 600),
+        sourceType: event.sourceType || '',
+        sourceId: String(event.sourceId || ''),
+        occurredAt: event.occurredAt || new Date(),
+        metadata: event.metadata || {}
+      }
+    },
+    { upsert: true, new: false }
+  );
+}
+
+async function syncLearnerActivityTimeline(userId) {
+  try {
+    const [Task, Goal, Session, StudySession, Doubt] = await Promise.all([
+      Promise.resolve(require('../models/Task')),
+      Promise.resolve(require('../models/Goal')),
+      Promise.resolve(require('../models/Session')),
+      Promise.resolve(require('../models/StudySession')),
+      Promise.resolve(require('../models/Doubt'))
+    ]);
+
+    const [tasks, goals, mentorSessions, studySessions, doubts] = await Promise.all([
+      Task.find({ menteeId: userId })
+        .select('_id title status progressPercentage category updatedAt dueDate')
+        .sort({ updatedAt: -1 })
+        .limit(8),
+      Goal.find({ menteeId: userId })
+        .select('_id title status progressPercentage updatedAt targetDate')
+        .sort({ updatedAt: -1 })
+        .limit(8),
+      Session.find({ menteeId: userId })
+        .select('_id title status scheduledDate updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(6),
+      StudySession.find({ organizer: userId })
+        .select('_id title subject status sessionDate updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(6),
+      Doubt.find({ studentId: userId })
+        .select('_id subject status priority updatedAt createdAt')
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(8)
+    ]);
+
+    const updates = [];
+
+    tasks.forEach(task => {
+      updates.push(upsertLearnerActivity(userId, {
+        eventKey: `task:${task._id}:${task.status}:${Number(task.progressPercentage || 0)}`,
+        eventType: 'task',
+        title: `Task ${task.status}: ${task.title}`,
+        details: `Progress ${Number(task.progressPercentage || 0)}% in ${formatCategory(task.category || 'general')}`,
+        sourceType: 'task',
+        sourceId: task._id,
+        occurredAt: task.updatedAt || new Date(),
+        metadata: {
+          status: task.status,
+          progressPercentage: Number(task.progressPercentage || 0)
+        }
+      }));
+    });
+
+    goals.forEach(goal => {
+      updates.push(upsertLearnerActivity(userId, {
+        eventKey: `goal:${goal._id}:${goal.status}:${Number(goal.progressPercentage || 0)}`,
+        eventType: 'goal',
+        title: `Goal ${goal.status}: ${goal.title}`,
+        details: `Progress ${Number(goal.progressPercentage || 0)}%`,
+        sourceType: 'goal',
+        sourceId: goal._id,
+        occurredAt: goal.updatedAt || new Date(),
+        metadata: {
+          status: goal.status,
+          progressPercentage: Number(goal.progressPercentage || 0)
+        }
+      }));
+    });
+
+    mentorSessions.forEach(session => {
+      updates.push(upsertLearnerActivity(userId, {
+        eventKey: `mentor-session:${session._id}:${session.status}`,
+        eventType: 'mentor_session',
+        title: `Mentor session ${session.status}: ${session.title}`,
+        details: session.scheduledDate ? `Scheduled ${new Date(session.scheduledDate).toISOString()}` : '',
+        sourceType: 'session',
+        sourceId: session._id,
+        occurredAt: session.updatedAt || session.scheduledDate || new Date(),
+        metadata: {
+          status: session.status
+        }
+      }));
+    });
+
+    studySessions.forEach(session => {
+      updates.push(upsertLearnerActivity(userId, {
+        eventKey: `study-session:${session._id}:${session.status}`,
+        eventType: 'study_session',
+        title: `Study session ${session.status}: ${session.title}`,
+        details: `${formatCategory(session.subject || 'other')}`,
+        sourceType: 'study_session',
+        sourceId: session._id,
+        occurredAt: session.updatedAt || session.sessionDate || new Date(),
+        metadata: {
+          status: session.status,
+          subject: session.subject || 'other'
+        }
+      }));
+    });
+
+    doubts.forEach(doubt => {
+      updates.push(upsertLearnerActivity(userId, {
+        eventKey: `doubt:${doubt._id}:${doubt.status}`,
+        eventType: 'doubt',
+        title: `Doubt ${doubt.status}: ${doubt.subject}`,
+        details: `Priority ${String(doubt.priority || 'medium').toUpperCase()}`,
+        sourceType: 'doubt',
+        sourceId: doubt._id,
+        occurredAt: doubt.updatedAt || doubt.createdAt || new Date(),
+        metadata: {
+          status: doubt.status,
+          priority: doubt.priority || 'medium'
+        }
+      }));
+    });
+
+    await Promise.all(updates);
+  } catch (error) {
+    console.error('Failed to sync learner activity timeline:', error.message);
+  }
+}
+
+async function getLearnerAssistantContext(userId) {
+  try {
+    const [Task, Goal, Session, StudySession, Doubt, User] = await Promise.all([
+      Promise.resolve(require('../models/Task')),
+      Promise.resolve(require('../models/Goal')),
+      Promise.resolve(require('../models/Session')),
+      Promise.resolve(require('../models/StudySession')),
+      Promise.resolve(require('../models/Doubt')),
+      Promise.resolve(require('../models/User'))
+    ]);
+
+    const timelineLimit = Math.max(4, Number(process.env.AI_ACTIVITY_TIMELINE_LIMIT || 12));
+    const [tasks, goals, mentorSessions, studySessions, doubts, user, timeline] = await Promise.all([
+      Task.find({ menteeId: userId })
+        .select('title status progressPercentage dueDate category updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(30),
+      Goal.find({ menteeId: userId })
+        .select('title status progressPercentage targetDate updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(20),
+      Session.find({ menteeId: userId })
+        .select('title status scheduledDate updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(10),
+      StudySession.find({ organizer: userId })
+        .select('title subject status sessionDate updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(10),
+      Doubt.find({ studentId: userId })
+        .select('subject status priority createdAt')
+        .sort({ createdAt: -1 })
+        .limit(10),
+      User.findById(userId).select('groups streak lastActive subscription.plan subscription.status'),
+      LearnerActivity.find({ userId })
+        .select('eventType title details occurredAt')
+        .sort({ occurredAt: -1 })
+        .limit(timelineLimit)
+    ]);
+
+    const completedTasks = tasks.filter(task => task.status === 'completed' || Number(task.progressPercentage) >= 100).length;
+    const activeTasks = tasks.filter(task => ['pending', 'in-progress', 'overdue'].includes(task.status)).slice(0, 3);
+
+    const achievedGoals = goals.filter(goal => goal.status === 'achieved' || Number(goal.progressPercentage) >= 100).length;
+    const activeGoals = goals.filter(goal => goal.status === 'active').slice(0, 3);
+
+    const openDoubts = doubts.filter(doubt => ['open', 'in-progress'].includes(String(doubt.status || '').toLowerCase())).length;
+    const latestDoubt = doubts[0];
+
+    const upcomingMentorSessions = mentorSessions.filter(item => {
+      const when = new Date(item.scheduledDate || 0).getTime();
+      return Number.isFinite(when) && when > Date.now() && ['scheduled', 'rescheduled'].includes(item.status);
+    }).length;
+
+    const contextLines = [
+      `Subscription: ${user?.subscription?.plan || 'starter'} (${user?.subscription?.status || 'active'}).`,
+      `Streak: ${Number(user?.streak || 0)}. Groups joined: ${Array.isArray(user?.groups) ? user.groups.length : 0}.`,
+      `Tasks: ${completedTasks}/${tasks.length} completed. Active tasks: ${activeTasks.map(task => `${task.title} (${task.status}, ${Number(task.progressPercentage || 0)}%)`).join('; ') || 'none'}.`,
+      `Goals: ${achievedGoals}/${goals.length} achieved. Active goals: ${activeGoals.map(goal => `${goal.title} (${Number(goal.progressPercentage || 0)}%)`).join('; ') || 'none'}.`,
+      `Mentor sessions upcoming: ${upcomingMentorSessions}. Study sessions tracked: ${studySessions.length}.`,
+      `Doubts: ${openDoubts} open/in-progress. Latest doubt: ${latestDoubt ? `${latestDoubt.subject} (${latestDoubt.status})` : 'none'}.`,
+      `Timeline events (${timeline.length} latest): ${timeline.map(item => {
+        const stamp = item.occurredAt ? new Date(item.occurredAt).toISOString().slice(0, 10) : 'today';
+        return `${stamp} ${item.eventType}: ${compactText(item.title, 80)}`;
+      }).join(' | ') || 'none'}.`
+    ];
+
+    return contextLines.join(' ');
+  } catch (error) {
+    console.error('Failed to build learner assistant context:', error.message);
+    return '';
+  }
+}
+
 function buildModelMessages(conversation, latestUserMessage, userProfile) {
   const systemParts = [
     'You are LearnerBot for StudyFinder.',
-    'Be concise, friendly, practical, and student-focused.',
+    'Be concise, warm, practical, and student-focused.',
+    'Act like a proactive helper: suggest the next best action and keep steps simple.',
     'Use prior conversation context for continuity and personalization.',
     `Learner name: ${userProfile.name}.`,
     'Focus on study groups, mentors, doubts, productivity, and progress support.',
     'If uncertain, ask one clarifying question instead of inventing facts.'
   ];
+
+  if (userProfile.assistantContext) {
+    systemParts.push(`Current learner snapshot: ${userProfile.assistantContext}`);
+  }
 
   if (conversation.summary) {
     systemParts.push(`Conversation summary so far: ${conversation.summary}`);
@@ -1232,12 +1492,14 @@ function buildHeuristicSummary(messages) {
 function buildSystemPrompt(userProfile) {
   return [
     'You are LearnerBot for StudyFinder.',
-    'Be concise, friendly, and practical for students.',
+    'Be concise, warm, and practical for students.',
+    'Act like a proactive helper and suggest concrete next steps.',
     'Use the recent conversation context to keep continuity and personalization.',
     `Current learner name: ${userProfile.name}.`,
+    userProfile.assistantContext ? `Current learner snapshot: ${userProfile.assistantContext}` : '',
     'Focus on study groups, mentors, doubts, productivity, and progress support.',
     'If uncertain, ask a clarifying question instead of inventing facts.'
-  ].join(' ');
+  ].filter(Boolean).join(' ');
 }
 
 async function generateWithOpenAI(conversation, userProfile) {
