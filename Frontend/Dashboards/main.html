@@ -1190,8 +1190,62 @@
       return typing;
     }
 
-    function getLearnerFallbackReply(userText) {
+    async function getLearnerFallbackReply(userText) {
       const text = userText.toLowerCase();
+      const token = getAuthToken();
+
+      if (token && (text.includes('activity') || text.includes('recent') || text.includes('what did i do'))) {
+        try {
+          const response = await fetch(`${window.location.origin}/api/auth/ai-chat/timeline?limit=5`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && Array.isArray(data.events) && data.events.length) {
+            const summary = data.events
+              .slice(0, 3)
+              .map(item => `${item.eventType}: ${item.title}`)
+              .join(' | ');
+            return `From your latest activity, here is what you recently did: ${summary}.`;
+          }
+        } catch (error) {
+          console.error('Timeline fallback failed:', error);
+        }
+      }
+
+      if (token && (text.includes('progress') || text.includes('chart') || text.includes('score') || text.includes('tasks') || text.includes('goals'))) {
+        try {
+          const response = await fetch(`${window.location.origin}/api/auth/progress`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.success) {
+            const totalTasks = Number(data.totalTasks || 0);
+            const completedTasks = Number(data.completedTasks || 0);
+            const activeGoals = Number(data.activeGoals || 0);
+            const mentorSessions = Number(data.mentorSessions || 0);
+            return `Your current data says ${completedTasks}/${totalTasks} tasks are completed, ${activeGoals} goals are active, and ${mentorSessions} mentor sessions are tracked. Open My Progress for full trends.`;
+          }
+        } catch (error) {
+          console.error('Progress fallback failed:', error);
+        }
+      }
+
+      if (token && (text.includes('mentor') || text.includes('recommend') || text.includes('who should'))) {
+        try {
+          const response = await fetch(`${window.location.origin}/api/recommendations/mentors?limit=1&method=context_aware`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json().catch(() => ({}));
+          const top = Array.isArray(data.data) ? data.data[0] : null;
+          if (response.ok && top) {
+            const name = top.mentor_name || top.name || top.fullname || 'a mentor';
+            const reason = top.explanation || top.reason || 'based on your recent learning activity';
+            return `I recommend ${name} right now, ${reason}.`;
+          }
+        } catch (error) {
+          console.error('Mentor fallback failed:', error);
+        }
+      }
 
       if (text.includes('mentor')) {
         return 'For mentors, start in the Mentor section and filter by specialization. I can also help you draft your first doubt to a mentor.';
@@ -1511,7 +1565,8 @@
           launcher.classList.remove('is-thinking');
         }
 
-        appendLearnerMessage(getLearnerFallbackReply(userText), 'bot');
+        const fallbackReply = await getLearnerFallbackReply(userText);
+        appendLearnerMessage(fallbackReply, 'bot');
       } finally {
         learnerIsSending = false;
         input.disabled = false;

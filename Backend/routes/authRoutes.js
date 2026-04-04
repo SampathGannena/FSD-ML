@@ -7,6 +7,7 @@ const {resetPassword} = require('../controllers/authController')
 const authMiddleware = require('../middleware/authMiddleware');
 const Conversation = require('../models/Conversation');
 const LearnerActivity = require('../models/LearnerActivity');
+const recommendationService = require('../services/recommendationService');
 // const multer = require('multer');
 // const upload = multer({ dest: 'uploads/' });
 
@@ -1301,6 +1302,27 @@ async function syncLearnerActivityTimeline(userId) {
       }));
     });
 
+    const completedTasks = tasks.filter(task => task.status === 'completed' || Number(task.progressPercentage) >= 100).length;
+    const achievedGoals = goals.filter(goal => goal.status === 'achieved' || Number(goal.progressPercentage) >= 100).length;
+    const openDoubts = doubts.filter(doubt => ['open', 'in-progress'].includes(String(doubt.status || '').toLowerCase())).length;
+    const dayKey = new Date().toISOString().slice(0, 10);
+    updates.push(upsertLearnerActivity(userId, {
+      eventKey: `snapshot:${dayKey}:${completedTasks}:${achievedGoals}:${openDoubts}`,
+      eventType: 'progress_snapshot',
+      title: `Daily snapshot ${dayKey}`,
+      details: `Completed tasks ${completedTasks}/${tasks.length}, achieved goals ${achievedGoals}/${goals.length}, open doubts ${openDoubts}`,
+      sourceType: 'snapshot',
+      sourceId: dayKey,
+      occurredAt: new Date(),
+      metadata: {
+        completedTasks,
+        totalTasks: tasks.length,
+        achievedGoals,
+        totalGoals: goals.length,
+        openDoubts
+      }
+    }));
+
     await Promise.all(updates);
   } catch (error) {
     console.error('Failed to sync learner activity timeline:', error.message);
@@ -1319,7 +1341,7 @@ async function getLearnerAssistantContext(userId) {
     ]);
 
     const timelineLimit = Math.max(4, Number(process.env.AI_ACTIVITY_TIMELINE_LIMIT || 12));
-    const [tasks, goals, mentorSessions, studySessions, doubts, user, timeline] = await Promise.all([
+    const [tasks, goals, mentorSessions, studySessions, doubts, user, timeline, mentorSuggestion] = await Promise.all([
       Task.find({ menteeId: userId })
         .select('title status progressPercentage dueDate category updatedAt')
         .sort({ updatedAt: -1 })
@@ -1344,7 +1366,8 @@ async function getLearnerAssistantContext(userId) {
       LearnerActivity.find({ userId })
         .select('eventType title details occurredAt')
         .sort({ occurredAt: -1 })
-        .limit(timelineLimit)
+        .limit(timelineLimit),
+      getMentorSuggestionFromData(userId)
     ]);
 
     const completedTasks = tasks.filter(task => task.status === 'completed' || Number(task.progressPercentage) >= 100).length;
@@ -1368,6 +1391,7 @@ async function getLearnerAssistantContext(userId) {
       `Goals: ${achievedGoals}/${goals.length} achieved. Active goals: ${activeGoals.map(goal => `${goal.title} (${Number(goal.progressPercentage || 0)}%)`).join('; ') || 'none'}.`,
       `Mentor sessions upcoming: ${upcomingMentorSessions}. Study sessions tracked: ${studySessions.length}.`,
       `Doubts: ${openDoubts} open/in-progress. Latest doubt: ${latestDoubt ? `${latestDoubt.subject} (${latestDoubt.status})` : 'none'}.`,
+      mentorSuggestion ? `Suggested mentor from activity data: ${mentorSuggestion}.` : 'Suggested mentor from activity data: none available yet.',
       `Timeline events (${timeline.length} latest): ${timeline.map(item => {
         const stamp = item.occurredAt ? new Date(item.occurredAt).toISOString().slice(0, 10) : 'today';
         return `${stamp} ${item.eventType}: ${compactText(item.title, 80)}`;
@@ -1377,6 +1401,39 @@ async function getLearnerAssistantContext(userId) {
     return contextLines.join(' ');
   } catch (error) {
     console.error('Failed to build learner assistant context:', error.message);
+    return '';
+  }
+}
+
+function parseMentorRecommendation(item) {
+  if (!item || typeof item !== 'object') {
+    return '';
+  }
+
+  const name = item.mentor_name || item.name || item.fullname || item.mentorName || '';
+  if (!name) {
+    return '';
+  }
+
+  const score = Number(item.score);
+  const scoreText = Number.isFinite(score) ? `match score ${score.toFixed(2)}` : '';
+  const reason = item.explanation || item.reason || item.description || '';
+  return compactText([name, scoreText, reason].filter(Boolean).join(' - '), 180);
+}
+
+async function getMentorSuggestionFromData(userId) {
+  try {
+    const recommendations = await recommendationService.recommendMentors(String(userId), {
+      limit: 1,
+      method: 'context_aware'
+    });
+
+    if (!Array.isArray(recommendations) || !recommendations.length) {
+      return '';
+    }
+
+    return parseMentorRecommendation(recommendations[0]);
+  } catch (error) {
     return '';
   }
 }
