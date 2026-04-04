@@ -1169,7 +1169,20 @@
 
       const typing = document.createElement('div');
       typing.className = 'learner-message bot learner-typing';
-      typing.innerHTML = '<span></span><span></span><span></span>';
+      typing.innerHTML = `
+        <div class="minion-loader" aria-label="LearnerBot is thinking">
+          <span class="minion-loader-hands minion-loader-hands-left"></span>
+          <span class="minion-loader-hands minion-loader-hands-right"></span>
+          <span class="minion-loader-body">
+            <span class="minion-loader-goggles">
+              <span class="minion-loader-eye"></span>
+              <span class="minion-loader-eye"></span>
+            </span>
+            <span class="minion-loader-mouth"></span>
+            <span class="minion-loader-overall"></span>
+          </span>
+        </div>
+      `;
       chatBody.appendChild(typing);
       chatBody.scrollTop = chatBody.scrollHeight;
 
