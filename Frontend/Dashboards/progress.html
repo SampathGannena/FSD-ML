@@ -270,6 +270,7 @@
       background: rgba(255, 255, 255, 0.1);
       outline: none;
       -webkit-appearance: none;
+      appearance: none;
       margin-bottom: 5px;
     }
 
@@ -586,6 +587,354 @@
       .header { padding: 10px 20px; }
       .container { padding: 20px; }
     }
+
+    /* Groups-Style UI Revamp */
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(1200px 500px at -10% -20%, rgba(255, 75, 43, 0.12), transparent),
+        radial-gradient(900px 500px at 110% -30%, rgba(59, 130, 246, 0.09), transparent),
+        #121212;
+      color: #fff;
+      min-height: 100vh;
+      padding-top: 92px;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(24, 24, 24, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ff4b2b;
+      white-space: nowrap;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-nav a {
+      text-decoration: none;
+      color: #d1d5db;
+      font-size: 0.92rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.25s ease;
+      border: 1px solid transparent;
+    }
+
+    .header-nav a:hover,
+    .header-nav a.active {
+      color: #fff;
+      background: rgba(255, 75, 43, 0.14);
+      border-color: rgba(255, 75, 43, 0.26);
+    }
+
+    .btn-back {
+      background: rgba(255, 75, 43, 0.14);
+      border: 1px solid rgba(255, 75, 43, 0.35);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .btn-back:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 75, 43, 0.22);
+      box-shadow: 0 6px 16px rgba(255, 75, 43, 0.22);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .page-title {
+      font-size: 1.9rem;
+      color: #ff4b2b;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-subtitle {
+      color: #9ca3af;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card,
+    .task-card,
+    .goal-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.28s ease;
+    }
+
+    .stat-card {
+      padding: 18px;
+    }
+
+    .task-card,
+    .goal-card {
+      padding: 20px;
+      margin-bottom: 2px;
+    }
+
+    .stat-card:hover,
+    .task-card:hover,
+    .goal-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 75, 43, 0.35);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+    }
+
+    .stat-icon {
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      color: #9ca3af;
+      font-size: 0.82rem;
+      letter-spacing: 0.2px;
+    }
+
+    .tabs {
+      display: inline-flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      border: 0;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 6px;
+    }
+
+    .tab-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: #9ca3af;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.22s ease;
+    }
+
+    .tab-btn:hover {
+      color: #ff936e;
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      border-color: rgba(255, 75, 43, 0.32);
+      background: rgba(255, 75, 43, 0.16);
+    }
+
+    .card-title {
+      font-size: 1.08rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .card-description {
+      color: #c7c7c7;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .card-meta {
+      gap: 12px;
+      color: #9ca3af;
+      font-size: 0.78rem;
+      margin-bottom: 10px;
+    }
+
+    .status-badge {
+      border: 1px solid transparent;
+      font-size: 0.68rem;
+      letter-spacing: 0.35px;
+      padding: 5px 10px;
+    }
+
+    .progress-slider {
+      height: 6px;
+      margin-bottom: 8px;
+    }
+
+    .progress-slider::-webkit-slider-thumb {
+      width: 16px;
+      height: 16px;
+      box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2), 0 3px 10px rgba(255, 107, 0, 0.4);
+    }
+
+    .progress-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2), 0 3px 10px rgba(255, 107, 0, 0.4);
+    }
+
+    .progress-value {
+      font-size: 1.15rem;
+    }
+
+    .progress-bar-container {
+      height: 7px;
+      border-radius: 999px;
+    }
+
+    .milestones-list {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+    }
+
+    .milestone-item {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .btn {
+      border-radius: 8px;
+      font-size: 0.84rem;
+      padding: 9px 14px;
+      transition: all 0.22s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff6b00, #ff4b2b);
+      color: #fff;
+      border: 1px solid rgba(255, 170, 128, 0.45);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(255, 107, 0, 0.36);
+    }
+
+    .btn-secondary {
+      background: rgba(59, 130, 246, 0.14);
+      color: #93c5fd;
+      border: 1px solid rgba(147, 197, 253, 0.28);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(59, 130, 246, 0.2);
+    }
+
+    .empty-state {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed rgba(255, 255, 255, 0.17);
+      border-radius: 12px;
+      padding: 48px 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 1.2rem;
+      color: #d1d5db;
+    }
+
+    .empty-state p {
+      color: #9ca3af;
+    }
+
+    .toast {
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(24, 24, 24, 0.94);
+    }
+
+    @media (max-width: 980px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+
+      .header-nav {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding-top: 84px;
+      }
+
+      .header {
+        padding: 12px 14px;
+      }
+
+      .logo {
+        font-size: 1rem;
+      }
+
+      .container {
+        padding: 18px 12px 30px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tab-btn {
+        flex: 1;
+        text-align: center;
+      }
+
+      .card-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -594,6 +943,12 @@
     <div class="logo">
       <i class="fas fa-chart-line"></i>
       <span>My Progress</span>
+    </div>
+    <div class="header-nav">
+      <a href="main.html">Dashboard</a>
+      <a href="groups.html">Groups</a>
+      <a href="profile.html">Profile</a>
+      <a href="progress.html" class="active">Progress</a>
     </div>
     <div class="header-actions">
       <a href="main.html" class="btn-back">

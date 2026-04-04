@@ -560,6 +560,255 @@ app.get('/api/auth/doubts', authMiddleware, async (req, res) => {
 
 // ============ END DOUBTS ENDPOINTS ============
 
+// ============ DISCUSSIONS ENDPOINTS ============
+
+function discussionCategoryToDoubtCategory(category) {
+  const map = {
+    question: 'technical',
+    resource: 'conceptual',
+    discussion: 'project',
+    announcement: 'other'
+  };
+  return map[category] || 'other';
+}
+
+function doubtCategoryToDiscussionCategory(category) {
+  const map = {
+    technical: 'question',
+    conceptual: 'resource',
+    project: 'discussion',
+    career: 'discussion',
+    other: 'announcement'
+  };
+  return map[category] || 'discussion';
+}
+
+function extractDiscussionCategoryTag(tags = []) {
+  const prefixed = tags.find(tag => String(tag).startsWith('discussion_category:'));
+  return prefixed ? prefixed.split(':')[1] : null;
+}
+
+function toDiscussionPayload(doubt) {
+  const safeTags = Array.isArray(doubt.tags)
+    ? doubt.tags.filter(tag => !String(tag).startsWith('discussion_category:'))
+    : [];
+
+  const authorName = doubt.studentName || 'Learner';
+  const initials = authorName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || '')
+    .join('') || 'LR';
+
+  const latestCommentTime = Array.isArray(doubt.comments) && doubt.comments.length
+    ? new Date(Math.max(...doubt.comments.map(comment => new Date(comment.timestamp || 0).getTime())))
+    : null;
+  const lastActivity = latestCommentTime || doubt.answeredAt || doubt.updatedAt || doubt.createdAt;
+
+  return {
+    id: String(doubt._id),
+    title: doubt.subject,
+    description: doubt.question,
+    category: extractDiscussionCategoryTag(doubt.tags) || doubtCategoryToDiscussionCategory(doubt.category),
+    subject: doubt.subject,
+    author: {
+      id: String(doubt.studentId || ''),
+      name: authorName,
+      avatar: initials
+    },
+    status: doubt.status || 'open',
+    replies: Array.isArray(doubt.comments) ? doubt.comments.length : 0,
+    upvotes: Array.isArray(doubt.upvotes) ? doubt.upvotes.length : 0,
+    tags: safeTags,
+    createdAt: doubt.createdAt,
+    lastActivity,
+    comments: Array.isArray(doubt.comments)
+      ? doubt.comments.map((comment, idx) => ({
+          id: `${doubt._id}-${idx + 1}`,
+          author: {
+            name: comment.userName || 'User',
+            avatar: (comment.userName || 'User').slice(0, 2).toUpperCase()
+          },
+          content: comment.comment,
+          createdAt: comment.timestamp,
+          upvotes: 0
+        }))
+      : []
+  };
+}
+
+// GET /api/auth/discussions - Public + own discussions
+app.get('/api/auth/discussions', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+
+    const doubts = await Doubt.find({
+      $or: [
+        { isPublic: true },
+        { studentId: userId }
+      ]
+    }).sort({ updatedAt: -1, createdAt: -1 });
+
+    const discussions = doubts.map(toDiscussionPayload);
+
+    res.json({
+      success: true,
+      discussions,
+      count: discussions.length
+    });
+  } catch (error) {
+    console.error('Error loading discussions:', error);
+    res.status(500).json({ success: false, error: 'Failed to load discussions' });
+  }
+});
+
+// POST /api/auth/discussions/create - Create discussion
+app.post('/api/auth/discussions/create', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    const user = await User.findById(userId);
+
+    const { title, description, category, tags = [] } = req.body;
+    if (!title || !description || !category) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const cleanTags = Array.isArray(tags)
+      ? tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 10)
+      : [];
+
+    const discussionTag = `discussion_category:${String(category).toLowerCase()}`;
+    if (!cleanTags.includes(discussionTag)) {
+      cleanTags.push(discussionTag);
+    }
+
+    const doubt = await Doubt.create({
+      studentId: userId,
+      studentName: user?.fullname || 'Learner',
+      studentEmail: user?.email || 'unknown@example.com',
+      category: discussionCategoryToDoubtCategory(String(category).toLowerCase()),
+      subject: String(title).trim().slice(0, 160),
+      question: String(description).trim(),
+      priority: 'medium',
+      status: 'open',
+      isPublic: true,
+      tags: cleanTags
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Discussion created successfully',
+      discussion: toDiscussionPayload(doubt)
+    });
+  } catch (error) {
+    console.error('Error creating discussion:', error);
+    res.status(500).json({ success: false, error: 'Failed to create discussion' });
+  }
+});
+
+// GET /api/auth/discussions/:discussionId - Discussion detail with replies
+app.get('/api/auth/discussions/:discussionId', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    const { discussionId } = req.params;
+
+    const doubt = await Doubt.findById(discussionId);
+    if (!doubt) {
+      return res.status(404).json({ success: false, error: 'Discussion not found' });
+    }
+
+    const isOwner = String(doubt.studentId) === String(userId);
+    if (!doubt.isPublic && !isOwner) {
+      return res.status(403).json({ success: false, error: 'Not authorized to view this discussion' });
+    }
+
+    res.json({ success: true, discussion: toDiscussionPayload(doubt) });
+  } catch (error) {
+    console.error('Error fetching discussion details:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch discussion details' });
+  }
+});
+
+// POST /api/auth/discussions/:discussionId/reply - Add reply/comment
+app.post('/api/auth/discussions/:discussionId/reply', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    const { discussionId } = req.params;
+    const { content } = req.body;
+
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ success: false, error: 'Reply content is required' });
+    }
+
+    const doubt = await Doubt.findById(discussionId);
+    if (!doubt) {
+      return res.status(404).json({ success: false, error: 'Discussion not found' });
+    }
+
+    const isOwner = String(doubt.studentId) === String(userId);
+    if (!doubt.isPublic && !isOwner) {
+      return res.status(403).json({ success: false, error: 'Not authorized to reply' });
+    }
+
+    doubt.comments.push({
+      userId,
+      userName: req.user.fullname || 'Learner',
+      userType: 'student',
+      comment: String(content).trim(),
+      timestamp: new Date()
+    });
+    doubt.updatedAt = new Date();
+    await doubt.save();
+
+    res.json({
+      success: true,
+      message: 'Reply posted successfully',
+      discussion: toDiscussionPayload(doubt)
+    });
+  } catch (error) {
+    console.error('Error posting discussion reply:', error);
+    res.status(500).json({ success: false, error: 'Failed to post reply' });
+  }
+});
+
+// POST /api/auth/discussions/:discussionId/upvote - Toggle upvote
+app.post('/api/auth/discussions/:discussionId/upvote', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.userId;
+    const { discussionId } = req.params;
+
+    const doubt = await Doubt.findById(discussionId);
+    if (!doubt) {
+      return res.status(404).json({ success: false, error: 'Discussion not found' });
+    }
+
+    const existingIndex = (doubt.upvotes || []).findIndex(id => String(id) === String(userId));
+    let upvoted = false;
+    if (existingIndex >= 0) {
+      doubt.upvotes.splice(existingIndex, 1);
+    } else {
+      doubt.upvotes.push(userId);
+      upvoted = true;
+    }
+
+    doubt.updatedAt = new Date();
+    await doubt.save();
+
+    res.json({
+      success: true,
+      upvoted,
+      upvotes: doubt.upvotes.length,
+      discussion: toDiscussionPayload(doubt)
+    });
+  } catch (error) {
+    console.error('Error toggling discussion upvote:', error);
+    res.status(500).json({ success: false, error: 'Failed to update upvote' });
+  }
+});
+
+// ============ END DISCUSSIONS ENDPOINTS ============
+
 // Specific routes for mentor dashboard pages
 app.get('/mentorDash/mentorAdvancedDashboard.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../Frontend/mentorDash/mentorAdvancedDashboard.html'));

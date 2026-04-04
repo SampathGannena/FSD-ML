@@ -1,8 +1,13 @@
 // Global variables
 let allGroups = [];
 let filteredGroups = [];
+let recommendedGroups = [];
 let currentFilter = 'all';
 let userGroups = [];
+let groupsRefreshIntervalId = null;
+let lastGroupsRefreshAt = null;
+let isGroupsRefreshing = false;
+const GROUPS_AUTO_REFRESH_MS = 30000;
 
 // Get API URL
 const API_URL = window.location.origin;
@@ -12,6 +17,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadGroups();
   setupEventListeners();
   await loadUserGroups();
+  await loadRecommendedGroups();
+  startGroupsAutoRefresh();
+  updateGroupsRefreshMeta('Auto-refresh every 30s');
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopGroupsAutoRefresh();
+    updateGroupsRefreshMeta('Auto-refresh paused in background');
+  } else {
+    startGroupsAutoRefresh();
+    refreshGroupsData(true);
+  }
 });
 
 // Setup event listeners
@@ -25,11 +43,25 @@ function setupEventListeners() {
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => handleFilterChange(btn));
   });
+
+  const recommendationModal = document.getElementById('recommendationModal');
+  if (recommendationModal) {
+    recommendationModal.addEventListener('click', (event) => {
+      if (event.target === recommendationModal) {
+        closeRecommendationModal();
+      }
+    });
+  }
 }
 
 // Load all groups from the API
-async function loadGroups() {
+async function loadGroups(options = {}) {
+  const { silent = false } = options;
   const container = document.getElementById('groupsContainer');
+
+  if (isGroupsRefreshing) return;
+  isGroupsRefreshing = true;
+  setGroupsRefreshState('loading');
   
   try {
     const response = await fetch(`${API_URL}/api/groups/all`);
@@ -37,14 +69,23 @@ async function loadGroups() {
 
     if (data.success && data.groups) {
       allGroups = data.groups;
-      filteredGroups = allGroups;
-      renderGroups(filteredGroups);
+      applyFilter();
+      lastGroupsRefreshAt = new Date();
+      setGroupsRefreshState('ok');
     } else {
-      showError('Failed to load groups');
+      setGroupsRefreshState('error');
+      if (!silent || allGroups.length === 0) {
+        showError('Failed to load groups');
+      }
     }
   } catch (error) {
     console.error('Error loading groups:', error);
-    showError('Failed to load groups. Please try again.');
+    setGroupsRefreshState('error');
+    if (!silent || allGroups.length === 0) {
+      showError('Failed to load groups. Please try again.');
+    }
+  } finally {
+    isGroupsRefreshing = false;
   }
 }
 
@@ -63,12 +104,249 @@ async function loadUserGroups() {
     if (userResponse.ok) {
       const userData = await userResponse.json();
       userGroups = userData.groups || [];
-      // Re-render to show joined status
-      renderGroups(filteredGroups);
+      applyFilter();
     }
   } catch (error) {
     console.error('Error loading user groups:', error);
   }
+}
+
+function startGroupsAutoRefresh() {
+  stopGroupsAutoRefresh();
+  groupsRefreshIntervalId = setInterval(() => {
+    refreshGroupsData(true);
+  }, GROUPS_AUTO_REFRESH_MS);
+}
+
+function stopGroupsAutoRefresh() {
+  if (groupsRefreshIntervalId) {
+    clearInterval(groupsRefreshIntervalId);
+    groupsRefreshIntervalId = null;
+  }
+}
+
+async function refreshGroupsData(silent = true) {
+  await loadGroups({ silent });
+  await loadUserGroups();
+  await loadRecommendedGroups({ silent: true });
+}
+
+async function loadRecommendedGroups(options = {}) {
+  const { silent = false } = options;
+  const token = localStorage.getItem('token');
+  const sectionEl = document.getElementById('recommendedSection');
+
+  if (!token) {
+    recommendedGroups = [];
+    renderRecommendedGroups();
+    if (sectionEl) sectionEl.style.display = 'none';
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/recommendations/groups?limit=6&method=context_aware`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || payload.error || 'Failed to load recommendations');
+    }
+
+    const data = payload.data || {};
+    const recommendationItems = Array.isArray(data)
+      ? data
+      : (Array.isArray(data.recommendations) ? data.recommendations : []);
+
+    const groupsByName = new Map(allGroups.map(group => [String(group.name).toLowerCase(), group]));
+
+    recommendedGroups = recommendationItems
+      .map(item => {
+        const groupName = item.name || item.group_name || item.groupName || '';
+        if (!groupName) return null;
+
+        const matchedGroup = groupsByName.get(String(groupName).toLowerCase());
+
+        return {
+          ...(matchedGroup || {}),
+          name: groupName,
+          category: item.category || matchedGroup?.category || 'General',
+          memberCount: Number(item.member_count ?? item.memberCount ?? matchedGroup?.memberCount ?? matchedGroup?.members?.length ?? 0),
+          status: item.status || matchedGroup?.status || 'active',
+          score: Number(item.score ?? 0),
+          explanation: item.explanation || item.reason || 'Matched based on your profile and study patterns.'
+        };
+      })
+      .filter(Boolean);
+
+    renderRecommendedGroups();
+  } catch (error) {
+    console.error('Error loading recommended groups:', error);
+    recommendedGroups = [];
+    renderRecommendedGroups();
+
+    if (!silent && typeof window.showNotification === 'function') {
+      window.showNotification('Could not load recommendations right now.', 'warning');
+    }
+  }
+}
+
+function renderRecommendedGroups() {
+  const sectionEl = document.getElementById('recommendedSection');
+  const containerEl = document.getElementById('recommendedContainer');
+  if (!sectionEl || !containerEl) return;
+
+  if (!recommendedGroups.length) {
+    sectionEl.style.display = 'none';
+    containerEl.innerHTML = '';
+    return;
+  }
+
+  sectionEl.style.display = 'block';
+
+  containerEl.innerHTML = recommendedGroups.map((group, index) => {
+    const isJoined = userGroups.includes(group.name);
+    const joinedClass = isJoined ? 'joined' : '';
+    const statusClass = group.status === 'active' ? 'active' : 'inactive';
+    const safeName = escapeHtml(group.name);
+    const encodedGroupName = encodeURIComponent(group.name || '');
+    const score = Number.isFinite(group.score) ? Math.round(group.score * 100) : 0;
+
+    return `
+      <div class="group-card recommended ${joinedClass}">
+        <div class="group-card-header">
+          <h3>${safeName}</h3>
+          <span class="group-status ${statusClass}">${escapeHtml(group.status || 'active')}</span>
+        </div>
+
+        <div class="recommended-badges">
+          <span class="recommended-badge ai">AI Match</span>
+          <span class="recommended-badge score">Score ${score}%</span>
+        </div>
+
+        <div class="recommended-reason">${escapeHtml(group.explanation || 'Matched based on your profile and study patterns.')}</div>
+
+        <div class="recommendation-actions">
+          <button type="button" class="why-recommended-btn" onclick="openRecommendationModal(${index})">
+            Why this recommendation?
+          </button>
+        </div>
+
+        <p>${escapeHtml(group.description || 'This group aligns with your learning preferences.')}</p>
+
+        <div class="group-meta">
+          <div class="meta-item">
+            <span>📁</span>
+            <span>${escapeHtml(group.category || 'General')}</span>
+          </div>
+          <div class="meta-item">
+            <span>👥</span>
+            <span>${group.memberCount || 0} members</span>
+          </div>
+        </div>
+
+        <div class="group-card-footer">
+          <span class="member-count">${formatDate(group.createdAt)}</span>
+          <button
+            class="join-btn ${joinedClass}"
+            onclick="handleJoinGroup(decodeURIComponent('${encodedGroupName}'))"
+            ${isJoined ? 'disabled' : ''}
+          >
+            ${isJoined ? '✓ Joined' : 'Join Group'}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openRecommendationModal(index) {
+  const recommendation = recommendedGroups[index];
+  if (!recommendation) return;
+
+  const modal = document.getElementById('recommendationModal');
+  const body = document.getElementById('recommendationModalBody');
+  const title = document.getElementById('recommendationModalTitle');
+  if (!modal || !body || !title) return;
+
+  const score = Number.isFinite(recommendation.score) ? Math.round(recommendation.score * 100) : 0;
+  title.textContent = `Why ${recommendation.name} is recommended`;
+
+  body.innerHTML = `
+    <div class="rec-detail-grid">
+      <div class="rec-detail-item">
+        <div class="rec-detail-label">Match Score</div>
+        <div class="rec-detail-value">${score}%</div>
+      </div>
+      <div class="rec-detail-item">
+        <div class="rec-detail-label">Category</div>
+        <div class="rec-detail-value">${escapeHtml(recommendation.category || 'General')}</div>
+      </div>
+      <div class="rec-detail-item">
+        <div class="rec-detail-label">Community Size</div>
+        <div class="rec-detail-value">${recommendation.memberCount || 0} members</div>
+      </div>
+    </div>
+    <div class="rec-detail-text">${escapeHtml(recommendation.explanation || 'This group aligns with your interests and activity patterns.')}</div>
+    ${recommendation.tags && recommendation.tags.length ? `
+      <div class="group-tags" style="margin-top: 12px;">
+        ${recommendation.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+      </div>
+    ` : ''}
+  `;
+
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeRecommendationModal() {
+  const modal = document.getElementById('recommendationModal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function updateGroupsRefreshMeta(fallbackMessage) {
+  const timeEl = document.getElementById('groupsRefreshTime');
+  if (!timeEl) return;
+
+  if (lastGroupsRefreshAt) {
+    const now = Date.now();
+    const diffSeconds = Math.max(0, Math.floor((now - lastGroupsRefreshAt.getTime()) / 1000));
+
+    if (diffSeconds < 5) {
+      timeEl.textContent = 'Updated just now';
+    } else {
+      timeEl.textContent = `Updated ${diffSeconds}s ago`;
+    }
+    return;
+  }
+
+  timeEl.textContent = fallbackMessage || 'Auto-refresh every 30s';
+}
+
+function setGroupsRefreshState(state) {
+  const dotEl = document.getElementById('groupsRefreshDot');
+  if (!dotEl) return;
+
+  dotEl.classList.remove('loading', 'error');
+
+  if (state === 'loading') {
+    dotEl.classList.add('loading');
+    updateGroupsRefreshMeta('Refreshing groups...');
+    return;
+  }
+
+  if (state === 'error') {
+    dotEl.classList.add('error');
+    updateGroupsRefreshMeta('Refresh failed. Retrying...');
+    return;
+  }
+
+  updateGroupsRefreshMeta();
 }
 
 // Render groups to the page
@@ -88,6 +366,7 @@ function renderGroups(groups) {
     const isJoined = userGroups.includes(group.name);
     const joinedClass = isJoined ? 'joined' : '';
     const statusClass = group.status === 'active' ? 'active' : 'inactive';
+    const encodedGroupName = encodeURIComponent(group.name || '');
     
     return `
       <div class="group-card ${joinedClass}">
@@ -122,7 +401,7 @@ function renderGroups(groups) {
           <button 
             class="join-btn ${joinedClass}" 
             data-group="${escapeHtml(group.name)}"
-            onclick="handleJoinGroup('${escapeHtml(group.name)}')"
+            onclick="handleJoinGroup(decodeURIComponent('${encodedGroupName}'))"
             ${isJoined ? 'disabled' : ''}
           >
             ${isJoined ? '✓ Joined' : 'Join Group'}
@@ -224,6 +503,7 @@ async function handleJoinGroup(groupName) {
       
       // Re-render groups to update UI
       renderGroups(filteredGroups);
+      renderRecommendedGroups();
       
       // Redirect to groups page after a short delay
       setTimeout(() => {

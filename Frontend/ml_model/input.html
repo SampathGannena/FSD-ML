@@ -15,6 +15,10 @@
     <div class="header">
       <h1>📚 Study Groups</h1>
       <p>Discover and join study groups</p>
+      <div class="groups-refresh-meta" id="groupsRefreshMeta" aria-live="polite">
+        <span class="groups-refresh-dot" id="groupsRefreshDot"></span>
+        <span class="groups-refresh-time" id="groupsRefreshTime">Auto-refresh every 30s</span>
+      </div>
     </div>
 
     <!-- Search Bar -->
@@ -25,6 +29,15 @@
         placeholder="🔍 Search groups by name, category, or tags..." 
         autocomplete="off"
       />
+    </div>
+
+    <!-- Recommended Groups -->
+    <div id="recommendedSection" class="recommended-section" style="display: none;">
+      <div class="recommended-header">
+        <h2>⭐ Recommended for You</h2>
+        <span class="recommended-subtitle">Personalized suggestions based on your profile and activity</span>
+      </div>
+      <div id="recommendedContainer" class="recommended-grid"></div>
     </div>
 
     <!-- Filter Options -->
@@ -43,6 +56,14 @@
     <!-- Empty State -->
     <div id="emptyState" class="empty-state" style="display: none;">
       <p>No groups found. Try adjusting your search.</p>
+    </div>
+  </div>
+
+  <div id="recommendationModal" class="recommendation-modal" style="display: none;" aria-hidden="true">
+    <div class="recommendation-modal-content" role="dialog" aria-modal="true" aria-labelledby="recommendationModalTitle">
+      <button type="button" class="recommendation-modal-close" onclick="closeRecommendationModal()" aria-label="Close">&times;</button>
+      <h3 id="recommendationModalTitle">Why this recommendation?</h3>
+      <div id="recommendationModalBody"></div>
     </div>
   </div>
 

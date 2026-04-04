@@ -13,6 +13,7 @@
     referrerpolicy="no-referrer"
   />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="../js/notifications.js"></script>
   <script src="../js/auth-guard.js"></script>
 </head>
@@ -554,37 +555,589 @@
     </div>
   </footer>
   
-  <div id="learner-bot">
-    <div class="chat-header">🧠 LearnerBot</div>
-    <div class="chat-body" id="chat-body">
-      <div class="message bot">Hi there! I’m LearnerBot. Ask me anything about your study groups or learning resources!</div>
-    </div>
-    <div class="chat-input">
-      <input type="text" id="user-input" placeholder="Type your message..." />
-      <button onclick="sendMessage()">Send</button>
+  <div id="learner-bot" class="learner-bot-shell">
+    <button id="learner-bot-launcher" class="learner-bot-launcher" type="button" aria-label="Open LearnerBot" aria-expanded="false" onclick="toggleLearnerBot()">
+      <span class="launcher-rings"></span>
+      <span class="launcher-face">
+        <i class="fas fa-robot" aria-hidden="true"></i>
+      </span>
+      <span class="launcher-dot"></span>
+    </button>
+
+    <div id="learner-bot-card" class="learner-bot-card" style="display: none;" aria-hidden="true">
+      <div class="learner-chat-header">
+        <div class="learner-title-wrap">
+          <span class="learner-title-icon"><i class="fas fa-brain"></i></span>
+          <div>
+            <div class="learner-title-text">LearnerBot</div>
+            <div class="learner-status" id="learner-status">Online now</div>
+          </div>
+        </div>
+        <div class="learner-header-actions">
+          <button class="learner-header-btn" type="button" aria-label="Clear chat" onclick="clearLearnerChat()" title="Clear Chat">
+            <i class="fas fa-trash"></i>
+          </button>
+          <button class="learner-header-btn" type="button" aria-label="Export as JSON" onclick="exportLearnerChat('json')" title="Export JSON">
+            <i class="fas fa-file-code"></i>
+          </button>
+          <button class="learner-header-btn" type="button" aria-label="Export as TXT" onclick="exportLearnerChat('txt')" title="Export TXT">
+            <i class="fas fa-file-lines"></i>
+          </button>
+          <button class="learner-header-btn" type="button" aria-label="Export as PDF" onclick="exportLearnerChat('pdf')" title="Export PDF">
+            <i class="fas fa-file-pdf"></i>
+          </button>
+          <button class="learner-header-btn" type="button" aria-label="New chat thread" onclick="createLearnerThread()" title="New Chat">
+            <i class="fas fa-plus"></i>
+          </button>
+          <button class="learner-close-btn" type="button" aria-label="Close LearnerBot" onclick="toggleLearnerBot(false)">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="learner-thread-bar">
+        <select id="learner-thread-select" class="learner-thread-select" onchange="switchLearnerThread(this.value)"></select>
+      </div>
+      <div class="learner-summary-note" id="learner-summary-note" style="display: none;"></div>
+      <div class="learner-chat-body" id="chat-body">
+        <div class="learner-message bot">Hi there! I'm LearnerBot. Ask me anything about your study groups or learning resources!</div>
+      </div>
+      <div class="learner-chat-input">
+        <input type="text" id="user-input" placeholder="Type your message..." onkeydown="handleLearnerInput(event)" />
+        <button type="button" onclick="sendMessage()">Send</button>
+      </div>
     </div>
   </div>
   
   <script>
-    function sendMessage() {
-      const input = document.getElementById("user-input");
-      const chatBody = document.getElementById("chat-body");
-  
-      if (input.value.trim() !== "") {
-        const userMsg = document.createElement("div");
-        userMsg.className = "message user";
-        userMsg.textContent = input.value;
-        chatBody.appendChild(userMsg);
-  
-        const botMsg = document.createElement("div");
-        botMsg.className = "message bot";
-        botMsg.textContent = "That's a great question! Let me look that up for you.";
-        chatBody.appendChild(botMsg);
-  
-        input.value = "";
-        chatBody.scrollTop = chatBody.scrollHeight;
+    const DEFAULT_LEARNER_GREETING = "Hi there! I'm LearnerBot. Ask me anything about your study groups or learning resources!";
+    const learnerPresenceStates = [
+      "Online now",
+      "Listening",
+      "Learning your style",
+      "Ready to help"
+    ];
+    let learnerPresenceIndex = 0;
+    let learnerThreads = [];
+    let learnerConversation = [];
+    let learnerCurrentSummary = '';
+    let activeLearnerThreadId = localStorage.getItem('learnerbot_active_thread_id') || '';
+    let learnerIsSending = false;
+    let learnerThreadsLoaded = false;
+
+    function getAuthToken() {
+      return localStorage.getItem("token");
+    }
+
+    function normalizeLearnerMessages(messages) {
+      if (!Array.isArray(messages)) {
+        return [];
+      }
+
+      return messages
+        .filter(item => item && typeof item.content === "string")
+        .map(item => ({
+          role: item.role === "user" ? "user" : "assistant",
+          content: item.content.trim(),
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
+        .filter(item => item.content);
+    }
+
+    function getThreadSelect() {
+      return document.getElementById('learner-thread-select');
+    }
+
+    function getSummaryNote() {
+      return document.getElementById('learner-summary-note');
+    }
+
+    function updateSummaryNote(summary) {
+      const summaryNote = getSummaryNote();
+      if (!summaryNote) return;
+
+      learnerCurrentSummary = summary || '';
+      if (summary && summary.trim()) {
+        summaryNote.style.display = 'block';
+        summaryNote.textContent = `Memory condensed from earlier messages: ${summary}`;
+      } else {
+        summaryNote.style.display = 'none';
+        summaryNote.textContent = '';
       }
     }
+
+    async function loadLearnerThreads() {
+      const token = getAuthToken();
+      if (!token) {
+        learnerThreads = [];
+        learnerThreadsLoaded = false;
+        learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        updateSummaryNote('');
+        renderThreadOptions();
+        renderLearnerConversation();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/threads`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to load chat threads');
+        }
+
+        learnerThreads = Array.isArray(data.threads) ? data.threads : [];
+        learnerThreadsLoaded = true;
+
+        if (!learnerThreads.length) {
+          const created = await createLearnerThread(true);
+          if (created) {
+            return;
+          }
+          learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+          updateSummaryNote('');
+          renderThreadOptions();
+          renderLearnerConversation();
+          return;
+        }
+
+        const activeExists = learnerThreads.some(thread => thread.threadId === activeLearnerThreadId);
+        if (!activeExists) {
+          activeLearnerThreadId = learnerThreads[0].threadId;
+          localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+        }
+
+        renderThreadOptions();
+        await loadLearnerThreadHistory(activeLearnerThreadId);
+      } catch (error) {
+        console.error('Unable to load LearnerBot threads:', error);
+        if (!learnerConversation.length) {
+          learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        }
+        renderThreadOptions();
+        renderLearnerConversation();
+      }
+    }
+
+    async function createLearnerThread(switchAfterCreate = true) {
+      const token = getAuthToken();
+      if (!token) return null;
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/threads`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ title: 'New Chat' })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create chat thread');
+        }
+
+        upsertThread(data.thread);
+        if (switchAfterCreate) {
+          activeLearnerThreadId = data.thread.threadId;
+          localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+          await loadLearnerThreadHistory(activeLearnerThreadId);
+        }
+
+        return data.thread;
+      } catch (error) {
+        console.error('Unable to create LearnerBot thread:', error);
+        return null;
+      }
+    }
+
+    async function switchLearnerThread(threadId) {
+      if (!threadId) return;
+      activeLearnerThreadId = threadId;
+      localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+      await loadLearnerThreadHistory(threadId);
+    }
+
+    async function loadLearnerThreadHistory(threadId) {
+      const token = getAuthToken();
+      if (!token) {
+        learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        updateSummaryNote('');
+        renderLearnerConversation();
+        return;
+      }
+
+      const resolvedThreadId = threadId || activeLearnerThreadId;
+      if (!resolvedThreadId) {
+        learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        updateSummaryNote('');
+        renderLearnerConversation();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/history?threadId=${encodeURIComponent(resolvedThreadId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to load chat history');
+        }
+
+        activeLearnerThreadId = data.thread?.threadId || resolvedThreadId;
+        localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+        learnerConversation = normalizeLearnerMessages(data.messages);
+        if (!learnerConversation.length) {
+          learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        }
+        updateSummaryNote(data.summary || data.thread?.summary || '');
+        upsertThread(data.thread || {
+          threadId: activeLearnerThreadId,
+          title: 'New Chat',
+          summary: data.summary || ''
+        });
+        renderLearnerConversation();
+      } catch (error) {
+        console.error('Unable to load LearnerBot history:', error);
+        learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        updateSummaryNote('');
+        renderLearnerConversation();
+      }
+    }
+
+    function renderLearnerConversation() {
+      const chatBody = document.getElementById('chat-body');
+      if (!chatBody) return;
+
+      chatBody.innerHTML = '';
+
+      learnerConversation.forEach(item => {
+        appendLearnerMessage(item.content, item.role === 'user' ? 'user' : 'bot');
+      });
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function appendLearnerMessage(text, type) {
+      const chatBody = document.getElementById('chat-body');
+      if (!chatBody) return;
+
+      const message = document.createElement('div');
+      message.className = `learner-message ${type}`;
+      message.textContent = text;
+      chatBody.appendChild(message);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    async function clearLearnerChat() {
+      const token = getAuthToken();
+      if (!token) {
+        learnerConversation = [{ role: 'assistant', content: DEFAULT_LEARNER_GREETING, createdAt: new Date().toISOString() }];
+        learnerCurrentSummary = '';
+        updateSummaryNote('');
+        renderLearnerConversation();
+        return;
+      }
+
+      const shouldClear = window.confirm('Clear this LearnerBot conversation thread?');
+      if (!shouldClear) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/history?threadId=${encodeURIComponent(activeLearnerThreadId)}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to clear chat history');
+        }
+
+        learnerConversation = normalizeLearnerMessages(data.messages);
+        learnerCurrentSummary = data.thread?.summary || '';
+        updateSummaryNote(learnerCurrentSummary);
+        upsertThread(data.thread || {
+          threadId: activeLearnerThreadId,
+          title: 'New Chat',
+          summary: ''
+        });
+        renderLearnerConversation();
+      } catch (error) {
+        console.error('Unable to clear LearnerBot history:', error);
+      }
+    }
+
+    function downloadBlob(filename, mimeType, content) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function exportLearnerChat(format = 'json') {
+      const token = getAuthToken();
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/ai-chat/export?threadId=${encodeURIComponent(activeLearnerThreadId)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to export chat history');
+        }
+
+        const exportPayload = {
+          exportedAt: data.exportedAt,
+          user: data.user,
+          thread: data.thread,
+          summary: data.summary || '',
+          messages: normalizeLearnerMessages(data.messages),
+          exportText: data.exportText
+        };
+
+        const safeTitle = (data.thread?.title || 'learnerbot-chat').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+        if (format === 'txt') {
+          downloadBlob(`${safeTitle}.txt`, 'text/plain;charset=utf-8', data.exportText || '');
+          return;
+        }
+
+        if (format === 'pdf') {
+          const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+          if (!jsPDFCtor) {
+            throw new Error('PDF library not loaded');
+          }
+
+          const doc = new jsPDFCtor({ unit: 'pt', format: 'a4' });
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const margin = 40;
+          const maxWidth = pageWidth - margin * 2;
+          const lineHeight = 16;
+          let cursorY = 48;
+
+          const lines = (data.exportText || '').split('\n');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(11);
+
+          lines.forEach(line => {
+            const wrapped = doc.splitTextToSize(line || ' ', maxWidth);
+            if (cursorY + wrapped.length * lineHeight > pageHeight - margin) {
+              doc.addPage();
+              cursorY = 48;
+            }
+            doc.text(wrapped, margin, cursorY);
+            cursorY += wrapped.length * lineHeight + 3;
+          });
+
+          doc.save(`${safeTitle}.pdf`);
+          return;
+        }
+
+        downloadBlob(`${safeTitle}.json`, 'application/json;charset=utf-8', JSON.stringify(exportPayload, null, 2));
+      } catch (error) {
+        console.error('Unable to export LearnerBot history:', error);
+      }
+    }
+
+    function showTypingIndicator() {
+      const chatBody = document.getElementById('chat-body');
+      const launcher = document.getElementById('learner-bot-launcher');
+      if (!chatBody) return null;
+
+      const typing = document.createElement('div');
+      typing.className = 'learner-message bot learner-typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      chatBody.appendChild(typing);
+      chatBody.scrollTop = chatBody.scrollHeight;
+
+      if (launcher) launcher.classList.add('is-thinking');
+      return typing;
+    }
+
+    function getLearnerFallbackReply(userText) {
+      const text = userText.toLowerCase();
+
+      if (text.includes('mentor')) {
+        return 'For mentors, start in the Mentor section and filter by specialization. I can also help you draft your first doubt to a mentor.';
+      }
+      if (text.includes('group') || text.includes('team')) {
+        return 'Open Find Your Group to get AI matches, then review Enrolled Groups to join active study circles that fit your schedule.';
+      }
+      if (text.includes('progress') || text.includes('chart') || text.includes('score')) {
+        return 'Your progress charts become more accurate as you complete tasks and sessions. Check the My Progress tab for trends and subject performance.';
+      }
+      if (text.includes('doubt') || text.includes('question')) {
+        return 'Use the Ask Doubt flow with category and priority. If a mentor is not selected, your doubt can still be posted publicly for peer replies.';
+      }
+      if (text.includes('hello') || text.includes('hi') || text.includes('hey')) {
+        return 'Hey! I am active and ready. Ask me about mentors, groups, doubts, or your progress data.';
+      }
+
+      return 'I am here with you. Try asking about mentors, groups, doubts, or progress and I will guide you step by step.';
+    }
+
+    async function fetchLearnerAIReply(userText) {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No auth token found');
+      }
+
+      const response = await fetch(`${window.location.origin}/api/auth/ai-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: userText,
+          threadId: activeLearnerThreadId || undefined
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'AI request failed');
+      }
+
+      if (!data.reply || typeof data.reply !== 'string') {
+        throw new Error('Empty AI response');
+      }
+
+      if (data.thread) {
+        activeLearnerThreadId = data.thread.threadId || activeLearnerThreadId;
+        localStorage.setItem('learnerbot_active_thread_id', activeLearnerThreadId);
+        upsertThread(data.thread);
+      }
+
+      learnerConversation = normalizeLearnerMessages(data.thread?.messages || []);
+      learnerCurrentSummary = data.summary || data.thread?.summary || '';
+      updateSummaryNote(learnerCurrentSummary);
+      renderThreadOptions();
+
+      return data.reply;
+    }
+
+    function updateLearnerPresence() {
+      const status = document.getElementById('learner-status');
+      if (!status) return;
+
+      learnerPresenceIndex = (learnerPresenceIndex + 1) % learnerPresenceStates.length;
+      status.textContent = learnerPresenceStates[learnerPresenceIndex];
+    }
+
+    async function initializeLearnerBot() {
+      await loadLearnerThreads();
+      renderThreadOptions();
+      renderLearnerConversation();
+    }
+
+    function toggleLearnerBot(forceState) {
+      const card = document.getElementById('learner-bot-card');
+      const launcher = document.getElementById('learner-bot-launcher');
+      if (!card || !launcher) return;
+
+      const shouldOpen = typeof forceState === 'boolean' ? forceState : card.style.display === 'none';
+      card.style.display = shouldOpen ? 'flex' : 'none';
+      card.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+      launcher.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+
+      if (shouldOpen) {
+        launcher.classList.remove('has-unread');
+        if (!learnerThreadsLoaded) {
+          initializeLearnerBot();
+        }
+        const input = document.getElementById('user-input');
+        if (input) input.focus();
+      }
+    }
+
+    function handleLearnerInput(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const launcher = document.getElementById('learner-bot-launcher');
+      const card = document.getElementById('learner-bot-card');
+      if (!input) return;
+      if (learnerIsSending) return;
+
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      learnerIsSending = true;
+      appendLearnerMessage(userText, 'user');
+      input.value = '';
+      input.disabled = true;
+
+      const typing = showTypingIndicator();
+      try {
+        const reply = await fetchLearnerAIReply(userText);
+        if (typing && typing.parentElement) {
+          typing.remove();
+        }
+
+        if (launcher) {
+          launcher.classList.remove('is-thinking');
+        }
+
+        appendLearnerMessage(reply, 'bot');
+
+        if (card && card.style.display === 'none' && launcher) {
+          launcher.classList.add('has-unread');
+        }
+      } catch (error) {
+        console.error('LearnerBot AI error:', error);
+
+        if (typing && typing.parentElement) {
+          typing.remove();
+        }
+
+        if (launcher) {
+          launcher.classList.remove('is-thinking');
+        }
+
+        appendLearnerMessage(getLearnerFallbackReply(userText), 'bot');
+      } finally {
+        learnerIsSending = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    document.addEventListener('click', function(event) {
+      const shell = document.getElementById('learner-bot');
+      const card = document.getElementById('learner-bot-card');
+      if (!shell || !card) return;
+
+      if (card.style.display !== 'none' && !shell.contains(event.target)) {
+        toggleLearnerBot(false);
+      }
+    });
+
+    initializeLearnerBot();
+    setInterval(updateLearnerPresence, 5000);
   </script>
 
   <!-- Collaboration & Mentorship System Script -->
@@ -1091,13 +1644,60 @@
     let allDiscussions = [];
     let currentDiscussion = null;
 
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeDiscussionItem(item) {
+      const id = String(item.id || item._id || '');
+      const authorName = item.author?.name || item.studentName || 'Learner';
+      const avatar = item.author?.avatar || authorName.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase() || 'LR';
+      const repliesList = Array.isArray(item.repliesList)
+        ? item.repliesList
+        : Array.isArray(item.comments)
+          ? item.comments.map(comment => ({
+              id: comment.id || comment._id || '',
+              author: comment.authorName || comment.author?.name || 'Community Member',
+              content: comment.content || comment.text || '',
+              createdAt: comment.createdAt || new Date().toISOString(),
+              isAccepted: Boolean(comment.isAccepted)
+            }))
+          : [];
+
+      return {
+        id,
+        title: item.title || item.subject || 'Untitled Discussion',
+        description: item.description || item.question || '',
+        category: item.category || 'discussion',
+        subject: item.subject || '',
+        author: {
+          name: authorName,
+          avatar
+        },
+        status: item.status || 'open',
+        replies: Number(item.replies ?? repliesList.length ?? 0),
+        upvotes: Number(item.upvotes ?? 0),
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        comments: Array.isArray(item.comments) ? item.comments : [],
+        repliesList,
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+        lastActivity: item.lastActivity ? new Date(item.lastActivity) : (item.updatedAt ? new Date(item.updatedAt) : new Date())
+      };
+    }
+
     // Load discussions
     async function loadDiscussions() {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          console.log('No token found, showing demo discussions');
-          loadDemoDiscussions();
+          discussions = [];
+          allDiscussions = [];
+          displayDiscussions([]);
           return;
         }
 
@@ -1110,112 +1710,21 @@
 
         if (response.ok) {
           const data = await response.json();
-          discussions = data.discussions || [];
+          discussions = (data.discussions || []).map(normalizeDiscussionItem);
           allDiscussions = [...discussions];
         } else {
-          console.log('Failed to load discussions, showing demo data');
-          loadDemoDiscussions();
+          discussions = [];
+          allDiscussions = [];
         }
 
         displayDiscussions(discussions);
 
       } catch (error) {
         console.error('Error loading discussions:', error);
-        loadDemoDiscussions();
+        discussions = [];
+        allDiscussions = [];
+        displayDiscussions([]);
       }
-    }
-
-    // Load demo discussions
-    function loadDemoDiscussions() {
-      discussions = [
-        {
-          id: 1,
-          title: 'Best resources for learning Data Structures and Algorithms?',
-          description: 'I\'m preparing for coding interviews and need recommendations for DSA resources. What worked best for you?',
-          category: 'resource',
-          subject: 'computer-science',
-          author: {
-            name: 'Rahul Kumar',
-            avatar: 'RK'
-          },
-          status: 'open',
-          replies: 12,
-          upvotes: 25,
-          tags: ['dsa', 'coding', 'interview-prep'],
-          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-          lastActivity: new Date(Date.now() - 30 * 60 * 1000)
-        },
-        {
-          id: 2,
-          title: 'Help needed with React useEffect dependencies',
-          description: 'I\'m getting infinite loop in useEffect. Can someone explain how dependency array works?',
-          category: 'question',
-          subject: 'computer-science',
-          author: {
-            name: 'Priya Sharma',
-            avatar: 'PS'
-          },
-          status: 'answered',
-          replies: 8,
-          upvotes: 15,
-          tags: ['react', 'javascript', 'hooks'],
-          createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-          lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: 3,
-          title: 'Study group forming for Machine Learning course',
-          description: 'Looking for 3-4 people to form a study group for Andrew Ng\'s ML course. Interested?',
-          category: 'discussion',
-          subject: 'computer-science',
-          author: {
-            name: 'Amit Patel',
-            avatar: 'AP'
-          },
-          status: 'open',
-          replies: 5,
-          upvotes: 8,
-          tags: ['machine-learning', 'study-group'],
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          lastActivity: new Date(Date.now() - 12 * 60 * 60 * 1000)
-        },
-        {
-          id: 4,
-          title: 'Calculus II - Integration techniques cheat sheet',
-          description: 'I made a comprehensive cheat sheet for integration techniques. Hope it helps!',
-          category: 'resource',
-          subject: 'mathematics',
-          author: {
-            name: 'Sneha Reddy',
-            avatar: 'SR'
-          },
-          status: 'closed',
-          replies: 20,
-          upvotes: 45,
-          tags: ['calculus', 'mathematics', 'cheat-sheet'],
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          lastActivity: new Date(Date.now() - 18 * 60 * 60 * 1000)
-        },
-        {
-          id: 5,
-          title: 'Tips for effective group study sessions?',
-          description: 'What strategies do you use to make group study sessions productive? Share your best practices!',
-          category: 'discussion',
-          subject: '',
-          author: {
-            name: 'Vikram Singh',
-            avatar: 'VS'
-          },
-          status: 'open',
-          replies: 15,
-          upvotes: 30,
-          tags: ['study-tips', 'productivity'],
-          createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-          lastActivity: new Date(Date.now() - 6 * 60 * 60 * 1000)
-        }
-      ];
-      allDiscussions = [...discussions];
-      displayDiscussions(discussions);
     }
 
     // Display discussions
@@ -1235,37 +1744,41 @@
       const html = discussionList.map(discussion => {
         const timeAgo = getTimeAgo(discussion.createdAt);
         const categoryIcon = getCategoryIcon(discussion.category);
-        
+        const safeTitle = escapeHtml(discussion.title);
+        const safeCategory = escapeHtml(discussion.category || 'discussion');
+        const safeSubject = escapeHtml(discussion.subject || '');
+        const safeDescription = escapeHtml(discussion.description || '');
+        const safeAuthor = escapeHtml(discussion.author.name);
+
         return `
-          <div class="doubt-item" onclick="viewDiscussion(${discussion.id})" style="cursor: pointer;">
-            <div class="doubt-header">
-              <div>
-                <div class="doubt-title">${discussion.title}</div>
-                <span class="doubt-category">${categoryIcon} ${discussion.category.charAt(0).toUpperCase() + discussion.category.slice(1)}</span>
-                ${discussion.subject ? `<span class="doubt-category" style="margin-left: 10px;">📚 ${discussion.subject}</span>` : ''}
+          <div class="discussion-card" onclick="viewDiscussion('${discussion.id}')" role="button" tabindex="0">
+            <div class="discussion-top-row">
+              <div class="discussion-chip-row">
+                <span class="discussion-chip category">${categoryIcon} ${safeCategory.charAt(0).toUpperCase() + safeCategory.slice(1)}</span>
+                ${discussion.subject ? `<span class="discussion-chip subject">📚 ${safeSubject}</span>` : ''}
+                <span class="discussion-chip status ${escapeHtml(discussion.status)}">${escapeHtml(discussion.status)}</span>
               </div>
-              <span class="doubt-status ${discussion.status}">${discussion.status}</span>
+              <span class="discussion-time"><i class="fas fa-clock"></i> ${timeAgo}</span>
             </div>
-            <div class="doubt-description">${discussion.description.substring(0, 150)}${discussion.description.length > 150 ? '...' : ''}</div>
+
+            <h4 class="discussion-title">${safeTitle}</h4>
+            <p class="discussion-description">${safeDescription.substring(0, 170)}${safeDescription.length > 170 ? '...' : ''}</p>
+
             ${discussion.tags && discussion.tags.length > 0 ? `
-              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0;">
-                ${discussion.tags.map(tag => `
-                  <span style="background: #e5e7eb; color: #4b5563; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem;">
-                    #${tag}
-                  </span>
-                `).join('')}
+              <div class="discussion-tags-row">
+                ${discussion.tags.map(tag => `<span class="discussion-tag">#${escapeHtml(tag)}</span>`).join('')}
               </div>
             ` : ''}
-            <div class="doubt-meta">
-              <span style="display: flex; align-items: center; gap: 5px;">
-                <div style="width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">
-                  ${discussion.author.avatar}
-                </div>
-                ${discussion.author.name}
-              </span>
-              <span><i class="fas fa-clock"></i> ${timeAgo}</span>
-              <span><i class="fas fa-comments"></i> ${discussion.replies} replies</span>
-              <span><i class="fas fa-arrow-up"></i> ${discussion.upvotes} upvotes</span>
+
+            <div class="discussion-bottom-row">
+              <div class="discussion-author">
+                <div class="discussion-avatar">${escapeHtml(discussion.author.avatar)}</div>
+                <span>${safeAuthor}</span>
+              </div>
+              <div class="discussion-metrics">
+                <span><i class="fas fa-comments"></i> ${discussion.replies} replies</span>
+                <span><i class="fas fa-arrow-up"></i> ${discussion.upvotes} upvotes</span>
+              </div>
             </div>
           </div>
         `;
@@ -1382,151 +1895,111 @@
         
       } catch (error) {
         console.error('Error creating discussion:', error);
-        // Demo: Add to local array
-        const newDiscussion = {
-          id: discussions.length + 1,
-          ...discussionData,
-          author: {
-            name: 'You',
-            avatar: 'ME'
-          },
-          status: 'open',
-          replies: 0,
-          upvotes: 0,
-          createdAt: new Date(),
-          lastActivity: new Date()
-        };
-        
-        discussions.unshift(newDiscussion);
-        allDiscussions.unshift(newDiscussion);
-        
         showNotificationToast({
-          type: 'success',
-          title: 'Discussion Posted',
-          message: 'Your discussion has been posted successfully'
+          type: 'error',
+          title: 'Failed to Post',
+          message: 'Could not post discussion. Please try again.'
         });
-        
-        closeNewDiscussionModal();
-        displayDiscussions(discussions);
       }
     }
 
     // View discussion
-    function viewDiscussion(discussionId) {
-      currentDiscussion = allDiscussions.find(d => d.id === discussionId);
-      
-      if (!currentDiscussion) return;
-      
+    async function viewDiscussion(discussionId) {
+      const selected = allDiscussions.find(d => String(d.id) === String(discussionId));
+      if (!selected) return;
+
+      currentDiscussion = selected;
+
       const modal = document.getElementById('viewDiscussionModal');
       const content = document.getElementById('discussion-thread-content');
-      
-      // Generate demo replies
-      const demoReplies = [
-        {
-          id: 1,
-          author: { name: 'Expert User', avatar: 'EU' },
-          content: 'Great question! I recommend checking out LeetCode and GeeksforGeeks for practice problems.',
-          upvotes: 8,
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-        },
-        {
-          id: 2,
-          author: { name: 'Student Helper', avatar: 'SH' },
-          content: 'I found "Cracking the Coding Interview" book really helpful. Also try AlgoExpert.',
-          upvotes: 5,
-          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
+      content.innerHTML = '<p style="text-align:center; color:#6b7280; padding:16px;">Loading discussion...</p>';
+      modal.style.display = 'flex';
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showNotificationToast({ type: 'error', title: 'Authentication Required', message: 'Please log in to view this discussion' });
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/discussions/${discussionId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to load discussion details');
         }
-      ];
-      
-      content.innerHTML = `
-        <div class="discussion-detail">
-          <!-- Original Post -->
-          <div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-              <span style="background: ${currentDiscussion.status === 'answered' ? '#10b981' : '#3b82f6'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem;">
-                ${getCategoryIcon(currentDiscussion.category)} ${currentDiscussion.category}
-              </span>
-              ${currentDiscussion.subject ? `<span style="color: #6b7280;">📚 ${currentDiscussion.subject}</span>` : ''}
+
+        const detail = normalizeDiscussionItem(data.discussion || selected);
+        currentDiscussion = detail;
+
+        const safeTitle = escapeHtml(detail.title);
+        const safeDescription = escapeHtml(detail.description);
+        const safeCategory = escapeHtml(detail.category || 'discussion');
+        const safeStatus = escapeHtml(detail.status || 'open');
+        const safeSubject = escapeHtml(detail.subject || '');
+
+        const repliesHtml = (detail.repliesList || []).length > 0
+          ? detail.repliesList.map(reply => `
+              <div class="discussion-reply-card">
+                <div class="discussion-reply-head">
+                  <span class="discussion-reply-author">${escapeHtml(reply.author || 'Community Member')}</span>
+                  <span class="discussion-reply-time">${getTimeAgo(reply.createdAt)}</span>
+                </div>
+                <p class="discussion-reply-content">${escapeHtml(reply.content || '')}</p>
+                ${reply.isAccepted ? '<span class="discussion-accepted">Accepted Answer</span>' : ''}
+              </div>
+            `).join('')
+          : '<p class="discussion-empty-replies">No replies yet. Be the first to help.</p>';
+
+        content.innerHTML = `
+          <div class="discussion-detail-shell">
+            <div class="discussion-chip-row">
+              <span class="discussion-chip category">${getCategoryIcon(detail.category)} ${safeCategory}</span>
+              ${detail.subject ? `<span class="discussion-chip subject">📚 ${safeSubject}</span>` : ''}
+              <span class="discussion-chip status ${safeStatus}">${safeStatus}</span>
             </div>
-            
-            <h3 style="margin: 0 0 15px 0; color: #1f2937;">${currentDiscussion.title}</h3>
-            
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 15px;">${currentDiscussion.description}</p>
-            
-            ${currentDiscussion.tags && currentDiscussion.tags.length > 0 ? `
-              <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px;">
-                ${currentDiscussion.tags.map(tag => `
-                  <span style="background: #e5e7eb; color: #4b5563; padding: 3px 10px; border-radius: 8px; font-size: 0.8rem;">
-                    #${tag}
-                  </span>
-                `).join('')}
+
+            <h3 class="discussion-detail-title">${safeTitle}</h3>
+            <p class="discussion-detail-description">${safeDescription}</p>
+
+            ${detail.tags && detail.tags.length ? `
+              <div class="discussion-tags-row">
+                ${detail.tags.map(tag => `<span class="discussion-tag">#${escapeHtml(tag)}</span>`).join('')}
               </div>
             ` : ''}
-            
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                  ${currentDiscussion.author.avatar}
-                </div>
-                <div>
-                  <div style="font-weight: 500; color: #1f2937;">${currentDiscussion.author.name}</div>
-                  <div style="font-size: 0.85rem; color: #6b7280;">${getTimeAgo(currentDiscussion.createdAt)}</div>
-                </div>
+
+            <div class="discussion-detail-meta">
+              <div class="discussion-author">
+                <div class="discussion-avatar">${escapeHtml(detail.author.avatar)}</div>
+                <span>${escapeHtml(detail.author.name)}</span>
               </div>
-              
-              <button onclick="upvoteDiscussion(${currentDiscussion.id})" 
-                style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                <i class="fas fa-arrow-up"></i> <strong>${currentDiscussion.upvotes}</strong>
+              <span><i class="fas fa-clock"></i> ${getTimeAgo(detail.createdAt)}</span>
+              <button class="discussion-upvote-btn" onclick="upvoteDiscussion('${detail.id}')">
+                <i class="fas fa-arrow-up"></i> ${detail.upvotes}
               </button>
             </div>
-          </div>
-          
-          <!-- Replies Section -->
-          <div style="margin-top: 30px;">
-            <h4 style="color: #1f2937; margin-bottom: 15px;">
-              <i class="fas fa-comments"></i> ${currentDiscussion.replies} Replies
-            </h4>
-            
-            ${demoReplies.map(reply => `
-              <div style="background: white; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: start; justify-content: space-between;">
-                  <div style="flex: 1;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                      <div style="width: 28px; height: 28px; border-radius: 50%; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold;">
-                        ${reply.author.avatar}
-                      </div>
-                      <div>
-                        <div style="font-weight: 500; color: #1f2937; font-size: 0.9rem;">${reply.author.name}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280;">${getTimeAgo(reply.createdAt)}</div>
-                      </div>
-                    </div>
-                    <p style="color: #4b5563; margin: 0; line-height: 1.6;">${reply.content}</p>
-                  </div>
-                  
-                  <button onclick="upvoteReply(${reply.id})" 
-                    style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-                    <i class="fas fa-arrow-up"></i> ${reply.upvotes}
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-            
-            <!-- Add Reply Form -->
-            <div style="margin-top: 20px; background: #f9fafb; padding: 20px; border-radius: 8px;">
-              <h5 style="margin: 0 0 10px 0; color: #1f2937;">Add Your Reply</h5>
-              <textarea id="reply-content" rows="4" 
-                placeholder="Share your thoughts..." 
-                style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;"></textarea>
-              <button onclick="submitReply()" 
-                style="margin-top: 10px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                <i class="fas fa-paper-plane"></i> Post Reply
-              </button>
+
+            <div class="discussion-replies-wrap">
+              <h4><i class="fas fa-comments"></i> Replies (${detail.replies})</h4>
+              ${repliesHtml}
+            </div>
+
+            <div class="discussion-reply-form">
+              <h5>Add Your Reply</h5>
+              <textarea id="reply-content" rows="4" placeholder="Share your thoughts..."></textarea>
+              <button onclick="submitReply()"><i class="fas fa-paper-plane"></i> Post Reply</button>
             </div>
           </div>
-        </div>
-      `;
-      
-      modal.style.display = 'flex';
+        `;
+      } catch (error) {
+        console.error('Error loading discussion detail:', error);
+        content.innerHTML = `<p style="text-align:center; color:#ef4444; padding:16px;">${escapeHtml(error.message || 'Failed to load discussion details')}</p>`;
+      }
     }
 
     // Close view discussion modal
@@ -1536,16 +2009,33 @@
     }
 
     // Upvote discussion
-    function upvoteDiscussion(discussionId) {
-      const discussion = allDiscussions.find(d => d.id === discussionId);
-      if (discussion) {
-        discussion.upvotes++;
-        showNotificationToast({
-          type: 'success',
-          title: 'Upvoted!',
-          message: 'You upvoted this discussion'
+    async function upvoteDiscussion(discussionId) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showNotificationToast({ type: 'error', title: 'Authentication Required', message: 'Please log in to upvote' });
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/discussions/${discussionId}/upvote`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
-        viewDiscussion(discussionId); // Refresh view
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to upvote discussion');
+        }
+
+        showNotificationToast({ type: 'success', title: 'Upvoted!', message: 'You upvoted this discussion' });
+        await loadDiscussions();
+        await viewDiscussion(discussionId);
+      } catch (error) {
+        console.error('Error upvoting discussion:', error);
+        showNotificationToast({ type: 'error', title: 'Upvote Failed', message: error.message || 'Please try again' });
       }
     }
 
@@ -1559,26 +2049,44 @@
     }
 
     // Submit reply
-    function submitReply() {
-      const content = document.getElementById('reply-content').value;
-      
-      if (!content.trim()) {
-        alert('Please enter a reply');
+    async function submitReply() {
+      if (!currentDiscussion) return;
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showNotificationToast({ type: 'error', title: 'Authentication Required', message: 'Please log in to reply' });
         return;
       }
-      
-      showNotificationToast({
-        type: 'success',
-        title: 'Reply Posted',
-        message: 'Your reply has been added'
-      });
-      
-      document.getElementById('reply-content').value = '';
-      
-      if (currentDiscussion) {
-        currentDiscussion.replies++;
-        currentDiscussion.lastActivity = new Date();
-        viewDiscussion(currentDiscussion.id); // Refresh view
+
+      const replyInput = document.getElementById('reply-content');
+      const content = (replyInput?.value || '').trim();
+      if (!content) {
+        showNotificationToast({ type: 'error', title: 'Empty Reply', message: 'Please enter a reply' });
+        return;
+      }
+
+      try {
+        const response = await fetch(`${window.location.origin}/api/auth/discussions/${currentDiscussion.id}/reply`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to post reply');
+        }
+
+        if (replyInput) replyInput.value = '';
+        showNotificationToast({ type: 'success', title: 'Reply Posted', message: 'Your reply has been added' });
+        await loadDiscussions();
+        await viewDiscussion(currentDiscussion.id);
+      } catch (error) {
+        console.error('Error posting reply:', error);
+        showNotificationToast({ type: 'error', title: 'Reply Failed', message: error.message || 'Please try again' });
       }
     }
 
@@ -1604,7 +2112,6 @@
     async function loadProgressData() {
       try {
         const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
         const timeRange = document.getElementById('progress-time-range')?.value || '7';
         
         if (!token) {
@@ -1613,8 +2120,8 @@
           return;
         }
 
-        // Fetch real progress data from backend for this specific user
-        const response = await fetch(`${window.location.origin}/api/auth/progress?userId=${userId}&range=${timeRange}`, {
+        // Fetch real progress data from backend for the authenticated user
+        const response = await fetch(`${window.location.origin}/api/auth/progress?range=${timeRange}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -1623,8 +2130,12 @@
 
         if (response.ok) {
           const data = await response.json();
-          console.log('User progress data loaded:', data);
-          displayProgressData(data);
+          const progressData = data?.success === false ? null : (data?.data || data);
+          if (!progressData) {
+            throw new Error(data?.error || 'Invalid progress payload');
+          }
+          console.log('User progress data loaded:', progressData);
+          displayProgressData(progressData);
         } else {
           console.log('Failed to load progress data, showing demo data for user');
           loadDemoProgressData();
